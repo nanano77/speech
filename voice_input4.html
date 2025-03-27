@@ -37,7 +37,7 @@
           formData.append("audio", e.data, "chunk.webm");
 
           try {
-            const res = await fetch("http://localhost:5000/recognize", {
+            const res = await fetch("https://a3f6-211-21-63-87.ngrok-free.app/recognize", {
               method: "POST",
               body: formData,
             });
