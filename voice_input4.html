@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>多平台語音辨識（即時上傳）</title>
+  <style>
+    body { font-family: sans-serif; padding: 2em; }
+    button { padding: 1em 2em; font-size: 1em; }
+    #log { margin-top: 1em; font-size: 1.2em; white-space: pre-line; border: 1px solid #ccc; padding: 1em; min-height: 5em; }
+  </style>
+</head>
+<body>
+  <h2>🎤 即時語音輸入（多平台 Whisper 辨識）</h2>
+  <button id="startBtn">開始辨識</button>
+  <button id="stopBtn" disabled>停止</button>
+  <div id="log">尚未開始</div>
+
+  <script>
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const log = document.getElementById("log");
+
+    let mediaRecorder;
+    let interval;
+    let stream;
+
+    let resultText = "";
+
+    startBtn.onclick = async () => {
+      log.textContent = "🎧 開始錄音辨識...";
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+
+      mediaRecorder.ondataavailable = async (e) => {
+        if (e.data.size > 0) {
+          const formData = new FormData();
+          formData.append("audio", e.data, "chunk.webm");
+
+          try {
+            const res = await fetch("http://localhost:5000/recognize", {
+              method: "POST",
+              body: formData,
+            });
+
+            const json = await res.json();
+            if (json.text) {
+              resultText += json.text;
+              log.textContent = resultText;
+            }
+          } catch (err) {
+            console.error("辨識失敗", err);
+          }
+        }
+      };
+
+      mediaRecorder.start();
+      interval = setInterval(() => {
+        mediaRecorder.requestData(); // 每 1 秒強制切片一次
+      }, 1000);
+
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+    };
+
+    stopBtn.onclick = () => {
+      mediaRecorder.stop();
+      clearInterval(interval);
+      stream.getTracks().forEach((t) => t.stop());
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      log.textContent += "\n⏹️ 已停止錄音";
+    };
+  </script>
+</body>
+</html>
