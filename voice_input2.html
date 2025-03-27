@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>語音錄音上傳辨識（debug 版）</title>
+  <style>
+    body { font-family: sans-serif; padding: 2em; }
+    .chatbox { display: flex; align-items: center; gap: 1em; }
+    button { padding: 0.5em 1em; font-size: 1em; }
+    #status { margin-top: 1em; color: darkred; }
+  </style>
+</head>
+<body>
+  <h2>🎤 錄音語音輸入（支援手機、debug模式）</h2>
+  <div class="chatbox">
+    <button id="startBtn">開始錄音</button>
+    <button id="stopBtn" disabled>停止錄音</button>
+  </div>
+  <p id="status"></p>
+  <p><strong>辨識結果：</strong><span id="result">（尚未辨識）</span></p>
+  <div id="download"></div>
+
+  <script>
+    window.onload = () => {
+      const startBtn = document.getElementById('startBtn');
+      const stopBtn = document.getElementById('stopBtn');
+      const status = document.getElementById('status');
+      const result = document.getElementById('result');
+      const download = document.getElementById('download');
+
+      let mediaRecorder;
+      let audioChunks = [];
+
+      startBtn.onclick = async () => {
+        alert("✅ 點擊了開始錄音按鈕");
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          alert("❌ 錯誤：你的瀏覽器不支援錄音功能");
+          return;
+        }
+
+        try {
+          alert("🎙️ 嘗試取得麥克風...");
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          alert("✅ 已授權麥克風！開始錄音");
+
+          mediaRecorder = new MediaRecorder(stream);
+          audioChunks = [];
+
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) audioChunks.push(e.data);
+          };
+
+          mediaRecorder.onstop = async () => {
+            alert("🛑 錄音結束");
+            const blob = new Blob(audioChunks, { type: 'audio/webm' });
+
+            // 顯示下載連結
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'recording.webm';
+            a.textContent = '🎧 點此下載錄音檔案';
+            download.innerHTML = ''; // 清空舊的
+            download.appendChild(a);
+
+            // 上傳辨識
+            const formData = new FormData();
+            formData.append('audio', blob, 'recording.webm');
+            status.textContent = '⬆️ 上傳中...';
+
+            try {
+              const res = await fetch('http://192.168.9.13:5000/recognize', {
+                method: 'POST',
+                body: formData
+              });
+
+              const json = await res.json();
+              result.textContent = json.text || '(無法辨識)';
+              status.textContent = '✅ 完成辨識';
+            } catch (err) {
+              console.error('上傳或辨識錯誤：', err);
+              status.textContent = '❌ 上傳或辨識失敗';
+              alert("⚠️ 無法連線後端：" + err.message);
+            }
+          };
+
+          mediaRecorder.start();
+          status.textContent = '🎙️ 錄音中...';
+          startBtn.disabled = true;
+          stopBtn.disabled = false;
+        } catch (err) {
+          console.error('錄音啟動錯誤：', err);
+          alert("❌ 錯誤：" + err.message);
+        }
+      };
+
+      stopBtn.onclick = () => {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+          mediaRecorder.stop();
+          startBtn.disabled = false;
+          stopBtn.disabled = true;
+          status.textContent = '⏹️ 停止錄音，準備辨識...';
+        }
+      };
+    };
+  </script>
+</body>
+</html>
