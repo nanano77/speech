@@ -2,15 +2,22 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>即時語音辨識（Web Speech API）</title>
+  <title>即時語音辨識（單行持續輸出）</title>
   <style>
     body { font-family: sans-serif; padding: 2em; }
     button { padding: 1em 2em; font-size: 1em; }
-    #output { margin-top: 1em; font-size: 1.2em; white-space: pre-line; }
+    #output {
+      margin-top: 1em;
+      font-size: 1.5em;
+      white-space: pre-wrap;
+      border: 1px solid #ccc;
+      padding: 1em;
+      min-height: 4em;
+    }
   </style>
 </head>
 <body>
-  <h2>🎤 即時語音辨識（Web Speech API）</h2>
+  <h2>🎤 即時語音辨識（逐字輸出單行模式）</h2>
   <button id="toggle">開始辨識</button>
   <div id="output">（尚未開始）</div>
 
@@ -20,20 +27,22 @@
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("你的瀏覽器不支援 SpeechRecognition，請改用 Chrome！");
+      alert("❌ 你的瀏覽器不支援語音辨識，請改用 Chrome");
       toggle.disabled = true;
     }
 
     const recognition = new SpeechRecognition();
     recognition.lang = "zh-TW";
-    recognition.continuous = true; // 即時持續辨識
-    recognition.interimResults = true; // 顯示中間結果
+    recognition.continuous = true;
+    recognition.interimResults = true;
 
     let isListening = false;
+    let finalText = "";
 
     toggle.onclick = () => {
       if (!isListening) {
         recognition.start();
+        finalText = "";
         output.textContent = "🎧 開始辨識中...";
         toggle.textContent = "停止辨識";
         isListening = true;
@@ -44,23 +53,25 @@
       }
     };
 
-    let finalText = "";
-
     recognition.onresult = (event) => {
       let interim = "";
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalText += transcript + "\n";
+          finalText += transcript;
         } else {
-          interim += transcript;
+          interim = transcript;
         }
       }
-      output.textContent = finalText + "[暫時辨識] " + interim;
+      output.textContent = finalText + interim;
     };
 
     recognition.onerror = (e) => {
-      alert("錯誤：" + e.error);
+      alert("⚠️ 錯誤：" + e.error);
+    };
+
+    recognition.onend = () => {
+      output.textContent = finalText;
     };
   </script>
 </body>
