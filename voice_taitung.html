@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>語音開關圖層 + 指令判斷顯示朗讀</title>
+  <style>
+    body { font-family: sans-serif; padding: 2em; }
+    .toolbar { display: flex; gap: 1em; align-items: center; flex-wrap: wrap; }
+    button {
+      padding: 1em 2em;
+      font-size: 1.2em;
+      background-color: #0c82f0;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:active {
+      background-color: #0a6fd0;
+    }
+    select {
+      font-size: 1.1em;
+      padding: 0.5em;
+    }
+    .box {
+      margin-top: 1em;
+      font-size: 1.2em;
+      white-space: pre-wrap;
+      border: 1px solid #ccc;
+      padding: 1em;
+      min-height: 3em;
+    }
+    #commandResult { background-color: #f5f5f5; }
+    #infoPanel {
+      background-color: #eef9ff;
+      border: 1px dashed #0c82f0;
+      padding: 1em;
+      margin-top: 2em;
+    }
+    ul {
+      margin: 0.5em 0;
+      padding-left: 1.5em;
+    }
+    .gridList {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5em 1.5em;
+      list-style: none;
+      padding-left: 0;
+    }
+    .gridList li {
+      padding-left: 1em;
+      position: relative;
+    }
+    .gridList li::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      color: #333;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 1em;
+        font-size: 1.1em;
+      }
+      h2 {
+        font-size: 1.3em;
+      }
+      button, select {
+        font-size: 1.1em;
+      }
+      .box {
+        font-size: 1.2em;
+        padding: 1em;
+      }
+      #infoPanel {
+        font-size: 1em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>🎤 長按語音辨識 + 圖層開關判斷 + 結果顯示</h2>
+  <div class="toolbar">
+    <button id="toggle">按住說話</button>
+    <label>
+      使用判斷方式：
+      <select id="mode">
+        <option value="local">本地規則</option>
+        <option value="gpt">GPT 模型</option>
+      </select>
+    </label>
+  </div>
+  <div id="output" class="box">（尚未開始）</div>
+  <div id="commandResult" class="box">（等待指令判斷）</div>
+
+  <div id="activePanel" class="box" style="background-color:#f8fff2;">
+    <strong>✅ 目前已開啟圖層：</strong>
+    <ul id="activeLayerList"></ul>
+  </div>
+
+  <div id="infoPanel">
+    <strong>📌 可操控圖層：</strong>
+    <ul id="layerListUI" class="gridList"></ul>
+    <strong>📢 支援的關鍵字：</strong>
+    <div>
+      <span>✅ 開啟：</span><span id="openWords"></span><br>
+      <span>❌ 關閉：</span><span id="closeWords"></span><br>
+      <span>🔁 特殊指令：</span>關閉全部、全部關閉
+    </div>
+  </div>
+
+  <script>
+    const output = document.getElementById("output");
+    const commandResult = document.getElementById("commandResult");
+    const toggle = document.getElementById("toggle");
+    const activeLayerList = document.getElementById("activeLayerList");
+    const modeSelector = document.getElementById("mode");
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("❌ 你的瀏覽器不支援語音辨識，請改用 Chrome");
+      toggle.disabled = true;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "zh-TW";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    let finalText = "";
+    let interimText = "";
+
+    const layerList = [
+      { id: "cadastreLayer", name: "地籍圖" },
+      { id: "taitungSoilLayer", name: "臺東農地重劃區" },
+      { id: "taitungCitySoilLayer", name: "臺東市地重劃區" },
+      { id: "taitungFunctionPlan", name: "臺東縣國土功能分區圖" },
+      { id: "urbanZone2024", name: "都市計畫使用分區圖" },
+      { id: "publicPrivateLandLayer", name: "公私有土地分布圖" },
+      { id: "sectionLayer", name: "段籍圖" },
+      { id: "leisureAgriZone", name: "休閒農業區" },
+      { id: "traceHistoryLayer", name: "產銷履歷分布" },
+      { id: "organicLayer", name: "有機農地分布" },
+      { id: "japanMapMeiji", name: "日治二萬分之一台灣堡圖" },
+      { id: "landUseSurvey", name: "國土利用現況調查成果圖" },
+      { id: "nonUrbanZone", name: "非都市土地使用分區圖" },
+      { id: "slopeSensitive", name: "順向坡敏感區" },
+      { id: "rockfallSensitive", name: "落石敏感區" },
+      { id: "debrisFlowStream", name: "土石流潛勢溪流" },
+      { id: "countyBoundary", name: "縣市界" },
+      { id: "townBoundary", name: "鄉鎮市區界" },
+      { id: "villageBoundary", name: "村里界" },
+      { id: "droneLijia", name: "利嘉禁航區無人機影像" },
+      { id: "droneTaiping", name: "太平榮家無人機影像" },
+      { id: "droneFengrong", name: "豐榮豐樂區段徵收區無人機影像" },
+      { id: "waterQualityProtection", name: "自來水水質水量保護區圖" },
+      { id: "farmRoad", name: "農路圖" },
+      { id: "agriIrrigation", name: "農田水利灌排渠道系統圖" },
+      { id: "hillArea", name: "山坡地範圍圖" },
+      { id: "hotelLayer", name: "旅館" },
+      { id: "bnbLayer", name: "民宿" },
+      { id: "map5000", name: "五千分一圖號" },
+      { id: "nonUrbanTypeLayer", name: "非都市土地使用地類別圖" },
+      { id: "contour25k", name: "1/25000經建版地形圖" },
+      { id: "contour50k", name: "1/50000經建版地形圖" },
+      { id: "contour100k", name: "1/100000經建版地形圖" },
+      { id: "indigenousReserve", name: "原住民保留地" },
+      { id: "indigenousTradition", name: "原住民族傳統領域" }
+    ];
+
+
+    const layers = {};
+    const activeLayers = new Set();
+
+    layerList.forEach(layer => {
+      layers[layer.id] = {
+        name: layer.name,
+        show: () => {
+          console.log(`✅ 顯示${layer.name}圖層`);
+          activeLayers.add(layer.id);
+          updateActiveLayerUI();
+        },
+        hide: () => {
+          console.log(`🚫 隱藏${layer.name}圖層`);
+          activeLayers.delete(layer.id);
+          updateActiveLayerUI();
+        }
+      };
+    });
+
+    function updateActiveLayerUI() {
+      activeLayerList.innerHTML = "";
+      for (const id of activeLayers) {
+        const li = document.createElement("li");
+        li.textContent = layers[id].name;
+        activeLayerList.appendChild(li);
+      }
+      if (activeLayers.size === 0) {
+        activeLayerList.innerHTML = '<li>（無）</li>';
+      }
+    }
+
+    const openKeywords = ["開啟", "打開", "顯示", "我要看", "展開", "叫出"];
+    const closeKeywords = ["關閉", "關掉", "隱藏", "收起", "不要看"];
+    const clearAllKeywords = ["全部關閉", "關閉全部"];
+
+    async function handleCommand(text) {
+      const mode = modeSelector.value;
+
+      if (mode === "local") {
+        if (clearAllKeywords.some(k => text.includes(k))) {
+          activeLayers.forEach(id => layers[id].hide());
+          return ["已關閉全部圖層", "（本地規則判斷）"];
+        }
+
+        const isOpen = openKeywords.some(k => text.includes(k));
+        const isClose = closeKeywords.some(k => text.includes(k));
+
+        for (const layer of layerList) {
+          if (text.includes(layer.name)) {
+            if (isOpen) {
+              layers[layer.id].show();
+              return [`已開啟${layer.name}圖層`, "（本地規則判斷）"];
+            } else if (isClose) {
+              layers[layer.id].hide();
+              return [`已關閉${layer.name}圖層`, "（本地規則判斷）"];
+            }
+          }
+        }
+
+        return ["⚠無法判斷指令", ""];
+      } else {
+        const gptResult = await queryGPT(text);
+        if (gptResult?.intent && Array.isArray(gptResult.targets)) {
+          const actionText = gptResult.intent === "open" ? "已開啟" : "已關閉";
+          gptResult.targets.forEach(id => {
+            if (layers[id]) {
+              if (gptResult.intent === "open") layers[id].show();
+              if (gptResult.intent === "close") layers[id].hide();
+            }
+          });
+          const resultLine = `${actionText} ${gptResult.targets.map(id => layers[id]?.name).join("、")}`;
+          return [resultLine, "（由 GPT 判斷）"];
+        }
+        return ["⚠無法判斷指令", ""];
+      }
+    }
+
+    async function queryGPT(userInput) {
+      try {
+        const response = await fetch("/api/gpt", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ userInput })
+        });
+        return await response.json();
+      } catch (err) {
+        console.warn("GPT Proxy 錯誤：", err);
+        return null;
+      }
+    }
+
+    const startRecognition = () => {
+      finalText = "";
+      interimText = "";
+      recognition.start();
+      output.textContent = "🎧 開始辨識中...";
+      commandResult.textContent = "（等待指令判斷）";
+    };
+
+    const stopRecognition = () => {
+      recognition.stop();
+    };
+
+    toggle.addEventListener("mousedown", startRecognition);
+    toggle.addEventListener("mouseup", stopRecognition);
+    toggle.addEventListener("mouseleave", stopRecognition);
+    toggle.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      startRecognition();
+    });
+    toggle.addEventListener("touchend", stopRecognition);
+
+    recognition.onresult = (event) => {
+      interimText = "";
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalText = transcript;
+        } else {
+          interimText += transcript;
+        }
+      }
+      output.textContent = finalText + interimText;
+    };
+
+    recognition.onerror = (e) => {
+      alert("⚠️ 錯誤：" + e.error);
+    };
+
+    recognition.onend = async () => {
+      const fullText = (finalText + interimText).trim();
+      output.textContent = fullText;
+
+      if (fullText) {
+        const [mainText, detailText] = await handleCommand(fullText);
+        commandResult.innerHTML = `${mainText}<br><small>${detailText}</small>`;
+
+        const utterance = new SpeechSynthesisUtterance(mainText);
+        utterance.lang = "zh-TW";
+        utterance.rate = 1;
+        utterance.pitch = 1;
+        utterance.volume = 1;
+        speechSynthesis.speak(utterance);
+      }
+    };
+
+    window.onload = () => {
+      const listUI = document.getElementById("layerListUI");
+      layerList.forEach(layer => {
+        const li = document.createElement("li");
+        li.textContent = layer.name;
+        listUI.appendChild(li);
+      });
+      document.getElementById("openWords").textContent = openKeywords.join("、");
+      document.getElementById("closeWords").textContent = closeKeywords.join("、");
+    };
+  </script>
+</body>
+</html>
