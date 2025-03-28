@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>長按語音辨識 + 延遲朗讀</title>
+  <style>
+    body { font-family: sans-serif; padding: 2em; }
+    button {
+      padding: 1em 2em;
+      font-size: 1.2em;
+      background-color: #0c82f0;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:active {
+      background-color: #0a6fd0;
+    }
+    #output {
+      margin-top: 1em;
+      font-size: 1.5em;
+      white-space: pre-wrap;
+      border: 1px solid #ccc;
+      padding: 1em;
+      min-height: 4em;
+    }
+  </style>
+</head>
+<body>
+  <h2>🎤 長按開始辨識，放開就停止</h2>
+  <button id="toggle">按住說話</button>
+  <div id="output">（尚未開始）</div>
+
+  <script>
+    const output = document.getElementById("output");
+    const toggle = document.getElementById("toggle");
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("❌ 你的瀏覽器不支援語音辨識，請改用 Chrome");
+      toggle.disabled = true;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "zh-TW";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    let finalText = "";
+    let interimText = "";
+
+    // 開始辨識
+    const startRecognition = () => {
+      finalText = "";
+      interimText = "";
+      recognition.start();
+      output.textContent = "🎧 開始辨識中...";
+    };
+
+    // 停止辨識
+    const stopRecognition = () => {
+      recognition.stop();
+    };
+
+    // 滑鼠事件（桌機）
+    toggle.addEventListener("mousedown", startRecognition);
+    toggle.addEventListener("mouseup", stopRecognition);
+    toggle.addEventListener("mouseleave", stopRecognition); // 滑出也停止
+
+    // 觸控事件（手機）
+    toggle.addEventListener("touchstart", (e) => {
+      e.preventDefault(); // 防止雙擊縮放
+      startRecognition();
+    });
+    toggle.addEventListener("touchend", stopRecognition);
+
+    // 語音轉文字中
+    recognition.onresult = (event) => {
+      interimText = "";
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalText += transcript;
+        } else {
+          interimText += transcript;
+        }
+      }
+      output.textContent = finalText + interimText;
+    };
+
+    // 辨識錯誤
+    recognition.onerror = (e) => {
+      alert("⚠️ 錯誤：" + e.error);
+    };
+
+    // 辨識結束 → 延遲朗讀
+    recognition.onend = () => {
+      const fullText = (finalText + interimText).trim();
+      output.textContent = fullText;
+
+      if (fullText) {
+        setTimeout(() => {
+          const utterance = new SpeechSynthesisUtterance(fullText);
+          utterance.lang = "zh-TW";
+          utterance.rate = 1;
+          utterance.pitch = 1;
+          utterance.volume = 1;
+          speechSynthesis.speak(utterance);
+        }, 300); // 延遲朗讀以確保轉換完成
+      }
+    };
+  </script>
+</body>
+</html>
