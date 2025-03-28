@@ -124,7 +124,7 @@
 
     const openKeywords = ["開啟", "打開", "顯示", "我要看", "展開", "叫出"];
     const closeKeywords = ["關閉", "關掉", "隱藏", "收起", "不要看"];
-    const clearAllKeywords = ["全部關閉", "關閉全部", "清除所有圖層"];
+    const clearAllKeywords = ["全部關閉", "關閉全部"];
 
     async function handleCommand(text) {
       if (clearAllKeywords.some(k => text.includes(k))) {
