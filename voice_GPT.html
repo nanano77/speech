@@ -129,7 +129,7 @@
     async function handleCommand(text) {
       if (clearAllKeywords.some(k => text.includes(k))) {
         activeLayers.forEach(id => layers[id].hide());
-        return "🔁 已關閉全部圖層";
+        return "已關閉全部圖層";
       }
 
       const gptResult = await queryGPT(text);
@@ -140,7 +140,7 @@
             if (gptResult.intent === "close") layers[id].hide();
           }
         });
-        return `🤖 GPT判斷：${gptResult.intent === "open" ? "開啟" : "關閉"} ${gptResult.targets.map(id => layers[id]?.name).join("、")}`;
+        return `GPT判斷：${gptResult.intent === "open" ? "開啟" : "關閉"} ${gptResult.targets.map(id => layers[id]?.name).join("、")}`;
       }
 
       const isOpen = openKeywords.some(k => text.includes(k));
