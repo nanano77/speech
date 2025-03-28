@@ -174,6 +174,19 @@
         return ["已關閉全部圖層", "（本地規則判斷）"];
       }
 
+      const gptResult = await queryGPT(text);
+      if (gptResult?.intent && Array.isArray(gptResult.targets)) {
+        const actionText = gptResult.intent === "open" ? "已開啟" : "已關閉";
+        gptResult.targets.forEach(id => {
+          if (layers[id]) {
+            if (gptResult.intent === "open") layers[id].show();
+            if (gptResult.intent === "close") layers[id].hide();
+          }
+        });
+        const resultLine = `${actionText} ${gptResult.targets.map(id => layers[id]?.name).join("、")}`;
+        return [resultLine, "（由 GPT 判斷）"];
+      }
+
       const isOpen = openKeywords.some(k => text.includes(k));
       const isClose = closeKeywords.some(k => text.includes(k));
 
@@ -189,22 +202,7 @@
         }
       }
 
-      // 如果本地規則無法判斷，改用 GPT
-      const gptResult = await queryGPT(text);
-      if (gptResult?.intent && Array.isArray(gptResult.targets)) {
-        const actionText = gptResult.intent === "open" ? "已開啟" : "已關閉";
-        gptResult.targets.forEach(id => {
-          if (layers[id]) {
-            if (gptResult.intent === "open") layers[id].show();
-            if (gptResult.intent === "close") layers[id].hide();
-          }
-        });
-        const resultLine = `${actionText} ${gptResult.targets.map(id => layers[id]?.name).join("、")}`;
-        return [resultLine, "（由 GPT 判斷）"];
-      }
-
       return ["⚠無法判斷指令", ""];
-    }
     }
 
     async function queryGPT(userInput) {
