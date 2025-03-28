@@ -74,37 +74,43 @@
       },
     };
 
-    // 語句判斷函式：會回傳一句描述文字
+    const openKeywords = ["開啟", "打開", "顯示", "我要看", "展開", "叫出"];
+    const closeKeywords = ["關閉", "關掉", "隱藏", "收起", "不要看"];
+    
     const handleCommand = (text) => {
+      const isOpen = openKeywords.some(k => text.includes(k));
+      const isClose = closeKeywords.some(k => text.includes(k));
+    
       if (text.includes("行政區")) {
-        if (text.includes("開啟")) {
+        if (isOpen) {
           layers.adminLayer.show();
           return "已開啟行政區圖層";
-        } else if (text.includes("關閉")) {
+        } else if (isClose) {
           layers.adminLayer.hide();
           return "已關閉行政區圖層";
         }
       }
       if (text.includes("土地使用")) {
-        if (text.includes("開啟")) {
+        if (isOpen) {
           layers.landuseLayer.show();
           return "已開啟土地使用圖層";
-        } else if (text.includes("關閉")) {
+        } else if (isClose) {
           layers.landuseLayer.hide();
           return "已關閉土地使用圖層";
         }
       }
       if (text.includes("農業區")) {
-        if (text.includes("開啟")) {
+        if (isOpen) {
           layers.agriLayer.show();
           return "已開啟農業區圖層";
-        } else if (text.includes("關閉")) {
+        } else if (isClose) {
           layers.agriLayer.hide();
           return "已關閉農業區圖層";
         }
       }
       return "⚠️ 無法判斷指令";
     };
+
 
     // 開始辨識
     const startRecognition = () => {
