@@ -49,7 +49,7 @@
       position: relative;
     }
     .gridList li::before {
-      content: \"•\";
+      content: "•";
       position: absolute;
       left: 0;
       color: #333;
@@ -78,7 +78,7 @@
   </style>
 </head>
 <body>
-  <h2>🎤 長按語音辨識 + 圖層開關判斷 + 結果朗讀</h2>
+  <h2>🎤 長按語音辨識 + 圖層開關判斷 + 結果顯示</h2>
   <button id="toggle">按住說話</button>
   <div id="output" class="box">（尚未開始）</div>
   <div id="commandResult" class="box">（等待指令判斷）</div>
@@ -168,18 +168,20 @@
     async function handleCommand(text) {
       if (clearAllKeywords.some(k => text.includes(k))) {
         activeLayers.forEach(id => layers[id].hide());
-        return "已關閉全部圖層";
+        return ["已關閉全部圖層", "（本地規則判斷）"];
       }
 
       const gptResult = await queryGPT(text);
       if (gptResult?.intent && Array.isArray(gptResult.targets)) {
+        const actionText = gptResult.intent === "open" ? "已開啟" : "已關閉";
         gptResult.targets.forEach(id => {
           if (layers[id]) {
             if (gptResult.intent === "open") layers[id].show();
             if (gptResult.intent === "close") layers[id].hide();
           }
         });
-        return `GPT判斷：${gptResult.intent === "open" ? "開啟" : "關閉"} ${gptResult.targets.map(id => layers[id]?.name).join("、")}`;
+        const resultLine = `${actionText} ${gptResult.targets.map(id => layers[id]?.name).join("、")}`;
+        return [resultLine, "（由 GPT 判斷）"];
       }
 
       const isOpen = openKeywords.some(k => text.includes(k));
@@ -189,15 +191,15 @@
         if (text.includes(layer.name)) {
           if (isOpen) {
             layers[layer.id].show();
-            return `已開啟${layer.name}圖層`;
+            return [`已開啟${layer.name}圖層`, "（本地規則判斷）"];
           } else if (isClose) {
             layers[layer.id].hide();
-            return `已關閉${layer.name}圖層`;
+            return [`已關閉${layer.name}圖層`, "（本地規則判斷）"];
           }
         }
       }
 
-      return "⚠無法判斷指令";
+      return ["⚠無法判斷指令", ""];
     }
 
     async function queryGPT(userInput) {
@@ -259,17 +261,8 @@
       output.textContent = fullText;
 
       if (fullText) {
-        const commandText = await handleCommand(fullText);
-        commandResult.textContent = commandText;
-
-        setTimeout(() => {
-          const utterance = new SpeechSynthesisUtterance(commandText);
-          utterance.lang = "zh-TW";
-          utterance.rate = 1;
-          utterance.pitch = 1;
-          utterance.volume = 1;
-          speechSynthesis.speak(utterance);
-        }, 300);
+        const [mainText, detailText] = await handleCommand(fullText);
+        commandResult.innerHTML = `${mainText}<br><small>${detailText}</small>`;
       }
     };
 
