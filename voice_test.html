@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>長按語音辨識 + 延遲朗讀</title>
+  <title>長按語音辨識 + 朗讀最後一句</title>
   <style>
     body { font-family: sans-serif; padding: 2em; }
     button {
@@ -28,7 +28,7 @@
   </style>
 </head>
 <body>
-  <h2>🎤 長按開始辨識，放開就停止</h2>
+  <h2>🎤 長按開始辨識，放開就朗讀最後一句</h2>
   <button id="toggle">按住說話</button>
   <div id="output">（尚未開始）</div>
 
@@ -50,7 +50,6 @@
     let finalText = "";
     let interimText = "";
 
-    // 開始辨識
     const startRecognition = () => {
       finalText = "";
       interimText = "";
@@ -58,46 +57,36 @@
       output.textContent = "🎧 開始辨識中...";
     };
 
-    // 停止辨識
     const stopRecognition = () => {
       recognition.stop();
     };
 
-    // 滑鼠事件（桌機）
     toggle.addEventListener("mousedown", startRecognition);
     toggle.addEventListener("mouseup", stopRecognition);
-    toggle.addEventListener("mouseleave", stopRecognition); // 滑出也停止
-
-    // 觸控事件（手機）
+    toggle.addEventListener("mouseleave", stopRecognition);
     toggle.addEventListener("touchstart", (e) => {
-      e.preventDefault(); // 防止雙擊縮放
+      e.preventDefault();
       startRecognition();
     });
     toggle.addEventListener("touchend", stopRecognition);
 
-    // 語音轉文字中
     recognition.onresult = (event) => {
-      finalText = "";
       interimText = "";
-    
-      for (let i = 0; i < event.results.length; ++i) {
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalText += transcript;
+          finalText = transcript; // ✅ 只保留最後一句
         } else {
           interimText += transcript;
         }
       }
-    
       output.textContent = finalText + interimText;
     };
 
-    // 辨識錯誤
     recognition.onerror = (e) => {
       alert("⚠️ 錯誤：" + e.error);
     };
 
-    // 辨識結束 → 延遲朗讀
     recognition.onend = () => {
       const fullText = (finalText + interimText).trim();
       output.textContent = fullText;
@@ -110,7 +99,7 @@
           utterance.pitch = 1;
           utterance.volume = 1;
           speechSynthesis.speak(utterance);
-        }, 300); // 延遲朗讀以確保轉換完成
+        }, 300);
       }
     };
   </script>
