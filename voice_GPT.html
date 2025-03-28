@@ -266,6 +266,14 @@
       if (fullText) {
         const [mainText, detailText] = await handleCommand(fullText);
         commandResult.innerHTML = `${mainText}<br><small>${detailText}</small>`;
+
+        // ✅ 只朗讀主結果
+        const utterance = new SpeechSynthesisUtterance(mainText);
+        utterance.lang = "zh-TW";
+        utterance.rate = 1;
+        utterance.pitch = 1;
+        utterance.volume = 1;
+        speechSynthesis.speak(utterance);
       }
     };
 
