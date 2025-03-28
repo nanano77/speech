@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>語音圖層控制（GPT + MCP）</title>
+  <style>
+    body { font-family: sans-serif; padding: 2em; }
+    button {
+      padding: 1em 2em;
+      font-size: 1.2em;
+      background-color: #0c82f0;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:active {
+      background-color: #0a6fd0;
+    }
+    .box {
+      margin-top: 1em;
+      font-size: 1.2em;
+      white-space: pre-wrap;
+      border: 1px solid #ccc;
+      padding: 1em;
+      min-height: 3em;
+    }
+    #commandResult { background-color: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <h2>🎤 長按語音 → GPT 判斷 → 圖層控制</h2>
+  <button id="toggle">按住說話</button>
+  <div id="output" class="box">（語音文字顯示）</div>
+  <div id="commandResult" class="box">（指令處理結果）</div>
+
+  <script>
+    const output = document.getElementById("output");
+    const commandResult = document.getElementById("commandResult");
+    const toggle = document.getElementById("toggle");
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("❌ 你的瀏覽器不支援語音辨識，請用 Chrome");
+      toggle.disabled = true;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "zh-TW";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    let finalText = "";
+    let interimText = "";
+
+    const layers = {
+      adminLayer: {
+        name: "行政區",
+        show: () => console.log("✅ 顯示行政區圖層"),
+        hide: () => console.log("🚫 隱藏行政區圖層")
+      },
+      landuseLayer: {
+        name: "土地使用",
+        show: () => console.log("✅ 顯示土地使用圖層"),
+        hide: () => console.log("🚫 隱藏土地使用圖層")
+      },
+      agriLayer: {
+        name: "農業區",
+        show: () => console.log("✅ 顯示農業區圖層"),
+        hide: () => console.log("🚫 隱藏農業區圖層")
+      }
+    };
+
+    const startRecognition = () => {
+      finalText = "";
+      interimText = "";
+      recognition.start();
+      output.textContent = "🎧 開始辨識中...";
+      commandResult.textContent = "（等待指令）";
+    };
+
+    const stopRecognition = () => {
+      recognition.stop();
+    };
+
+    toggle.addEventListener("mousedown", startRecognition);
+    toggle.addEventListener("mouseup", stopRecognition);
+    toggle.addEventListener("mouseleave", stopRecognition);
+    toggle.addEventListener("touchstart", e => {
+      e.preventDefault();
+      startRecognition();
+    });
+    toggle.addEventListener("touchend", stopRecognition);
+
+    recognition.onresult = (event) => {
+      interimText = "";
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) finalText = transcript;
+        else interimText += transcript;
+      }
+      output.textContent = finalText + interimText;
+    };
+
+    recognition.onerror = (e) => alert("⚠️ 錯誤：" + e.error);
+
+    recognition.onend = async () => {
+      const fullText = (finalText + interimText).trim();
+      output.textContent = fullText;
+
+      if (!fullText) return;
+
+      const result = await queryGPTWithMCP(fullText);
+
+      let responseText = "⚠️ 無法解析語句";
+      if (result?.intent && result?.target && layers[result.target]) {
+        const layer = layers[result.target];
+        if (result.intent === "open") {
+          layer.show();
+          responseText = `✅ 已開啟 ${layer.name} 圖層`;
+        } else if (result.intent === "close") {
+          layer.hide();
+          responseText = `🚫 已關閉 ${layer.name} 圖層`;
+        }
+      }
+
+      commandResult.textContent = responseText;
+      setTimeout(() => {
+        const utterance = new SpeechSynthesisUtterance(responseText);
+        utterance.lang = "zh-TW";
+        speechSynthesis.speak(utterance);
+      }, 300);
+    };
+
+    async function queryGPTWithMCP(userInput) {
+      const apiKey = "YOUR_OPENAI_API_KEY"; // ← 請替換
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content: `你是一個語音助理，負責控制圖層。請解析使用者語句並回傳 JSON 格式：{ "intent": "open|close", "target": "adminLayer|landuseLayer|agriLayer" }。目前圖層有：行政區、土地使用、農業區。`
+            },
+            {
+              role: "user",
+              content: userInput
+            }
+          ]
+        })
+      });
+
+      const data = await res.json();
+      try {
+        return JSON.parse(data.choices[0].message.content);
+      } catch (e) {
+        console.warn("❌ 回傳無法解析為 JSON：", data);
+        return null;
+      }
+    }
+  </script>
+</body>
+</html>
