@@ -19,14 +19,22 @@
     }
     .box {
       margin-top: 1em;
-      font-size: 1.5em;
+      font-size: 1.2em;
       white-space: pre-wrap;
       border: 1px solid #ccc;
       padding: 1em;
-      min-height: 4em;
+      min-height: 3em;
     }
-    #commandResult {
-      background-color: #f5f5f5;
+    #commandResult { background-color: #f5f5f5; }
+    #infoPanel {
+      background-color: #eef9ff;
+      border: 1px dashed #0c82f0;
+      padding: 1em;
+      margin-top: 2em;
+    }
+    ul {
+      margin: 0.5em 0;
+      padding-left: 1.5em;
     }
   </style>
 </head>
@@ -36,10 +44,24 @@
   <div id="output" class="box">（尚未開始）</div>
   <div id="commandResult" class="box">（等待指令判斷）</div>
 
+  <div id="infoPanel">
+    <strong>📌 可操控圖層：</strong>
+    <ul id="layerListUI"></ul>
+    <strong>📢 支援的關鍵字：</strong>
+    <div>
+      <span>✅ 開啟：</span><span id="openWords"></span><br>
+      <span>❌ 關閉：</span><span id="closeWords"></span><br>
+      <span>🔁 特殊指令：</span>關閉全部、全部關閉、清除所有圖層
+    </div>
+    <strong>✅ 目前已開啟圖層：</strong>
+    <ul id="activeLayerList"></ul>
+  </div>
+
   <script>
     const output = document.getElementById("output");
     const commandResult = document.getElementById("commandResult");
     const toggle = document.getElementById("toggle");
+    const activeLayerList = document.getElementById("activeLayerList");
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -70,18 +92,46 @@
     ];
 
     const layers = {};
+    const activeLayers = new Set();
+
     layerList.forEach(layer => {
       layers[layer.id] = {
         name: layer.name,
-        show: () => console.log(`✅ 顯示${layer.name}圖層`),
-        hide: () => console.log(`🚫 隱藏${layer.name}圖層`)
+        show: () => {
+          console.log(`✅ 顯示${layer.name}圖層`);
+          activeLayers.add(layer.id);
+          updateActiveLayerUI();
+        },
+        hide: () => {
+          console.log(`🚫 隱藏${layer.name}圖層`);
+          activeLayers.delete(layer.id);
+          updateActiveLayerUI();
+        }
       };
     });
 
+    function updateActiveLayerUI() {
+      activeLayerList.innerHTML = "";
+      for (const id of activeLayers) {
+        const li = document.createElement("li");
+        li.textContent = layers[id].name;
+        activeLayerList.appendChild(li);
+      }
+      if (activeLayers.size === 0) {
+        activeLayerList.innerHTML = '<li>（無）</li>';
+      }
+    }
+
     const openKeywords = ["開啟", "打開", "顯示", "我要看", "展開", "叫出"];
     const closeKeywords = ["關閉", "關掉", "隱藏", "收起", "不要看"];
+    const clearAllKeywords = ["全部關閉", "關閉全部", "清除所有圖層"];
 
     const handleCommand = (text) => {
+      if (clearAllKeywords.some(k => text.includes(k))) {
+        activeLayers.forEach(id => layers[id].hide());
+        return "🔁 已關閉全部圖層";
+      }
+
       const isOpen = openKeywords.some(k => text.includes(k));
       const isClose = closeKeywords.some(k => text.includes(k));
 
@@ -154,6 +204,17 @@
           speechSynthesis.speak(utterance);
         }, 300);
       }
+    };
+
+    window.onload = () => {
+      const listUI = document.getElementById("layerListUI");
+      layerList.forEach(layer => {
+        const li = document.createElement("li");
+        li.textContent = layer.name;
+        listUI.appendChild(li);
+      });
+      document.getElementById("openWords").textContent = openKeywords.join("、");
+      document.getElementById("closeWords").textContent = closeKeywords.join("、");
     };
   </script>
 </body>
