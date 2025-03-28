@@ -83,6 +83,11 @@
   <div id="output" class="box">（尚未開始）</div>
   <div id="commandResult" class="box">（等待指令判斷）</div>
 
+  <div id="activePanel" class="box" style="background-color:#f8fff2;">
+    <strong>✅ 目前已開啟圖層：</strong>
+    <ul id="activeLayerList"></ul>
+  </div>
+
   <div id="infoPanel">
     <strong>📌 可操控圖層：</strong>
     <ul id="layerListUI" class="gridList"></ul>
@@ -92,8 +97,6 @@
       <span>❌ 關閉：</span><span id="closeWords"></span><br>
       <span>🔁 特殊指令：</span>關閉全部、全部關閉
     </div>
-    <strong>✅ 目前已開啟圖層：</strong>
-    <ul id="activeLayerList"></ul>
   </div>
 
   <script>
