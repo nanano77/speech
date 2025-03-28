@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>語音開關圖層 + 指令判斷顯示朗讀</title>
+  <style>
+    body { font-family: sans-serif; padding: 2em; }
+    button {
+      padding: 1em 2em;
+      font-size: 1.2em;
+      background-color: #0c82f0;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:active {
+      background-color: #0a6fd0;
+    }
+    .box {
+      margin-top: 1em;
+      font-size: 1.5em;
+      white-space: pre-wrap;
+      border: 1px solid #ccc;
+      padding: 1em;
+      min-height: 4em;
+    }
+    #commandResult {
+      background-color: #f5f5f5;
+    }
+  </style>
+</head>
+<body>
+  <h2>🎤 長按語音辨識 + 圖層開關判斷 + 結果朗讀</h2>
+  <button id="toggle">按住說話</button>
+  <div id="output" class="box">（尚未開始）</div>
+  <div id="commandResult" class="box">（等待指令判斷）</div>
+
+  <script>
+    const output = document.getElementById("output");
+    const commandResult = document.getElementById("commandResult");
+    const toggle = document.getElementById("toggle");
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("❌ 你的瀏覽器不支援語音辨識，請改用 Chrome");
+      toggle.disabled = true;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "zh-TW";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    let finalText = "";
+    let interimText = "";
+
+    // 模擬圖層物件
+    const layers = {
+      adminLayer: {
+        name: "行政區",
+        show: () => console.log("✅ 顯示行政區圖層"),
+        hide: () => console.log("🚫 隱藏行政區圖層"),
+      },
+      landuseLayer: {
+        name: "土地使用",
+        show: () => console.log("✅ 顯示土地使用圖層"),
+        hide: () => console.log("🚫 隱藏土地使用圖層"),
+      },
+      agriLayer: {
+        name: "農業區",
+        show: () => console.log("✅ 顯示農業區圖層"),
+        hide: () => console.log("🚫 隱藏農業區圖層"),
+      },
+    };
+
+    // 語句判斷函式：會回傳一句描述文字
+    const handleCommand = (text) => {
+      if (text.includes("行政區")) {
+        if (text.includes("開啟")) {
+          layers.adminLayer.show();
+          return "已開啟行政區圖層";
+        } else if (text.includes("關閉")) {
+          layers.adminLayer.hide();
+          return "已關閉行政區圖層";
+        }
+      }
+      if (text.includes("土地使用")) {
+        if (text.includes("開啟")) {
+          layers.landuseLayer.show();
+          return "已開啟土地使用圖層";
+        } else if (text.includes("關閉")) {
+          layers.landuseLayer.hide();
+          return "已關閉土地使用圖層";
+        }
+      }
+      if (text.includes("農業區")) {
+        if (text.includes("開啟")) {
+          layers.agriLayer.show();
+          return "已開啟農業區圖層";
+        } else if (text.includes("關閉")) {
+          layers.agriLayer.hide();
+          return "已關閉農業區圖層";
+        }
+      }
+      return "⚠️ 無法判斷指令";
+    };
+
+    // 開始辨識
+    const startRecognition = () => {
+      finalText = "";
+      interimText = "";
+      recognition.start();
+      output.textContent = "🎧 開始辨識中...";
+      commandResult.textContent = "（等待指令判斷）";
+    };
+
+    // 停止辨識
+    const stopRecognition = () => {
+      recognition.stop();
+    };
+
+    // 綁定事件（滑鼠與手機觸控）
+    toggle.addEventListener("mousedown", startRecognition);
+    toggle.addEventListener("mouseup", stopRecognition);
+    toggle.addEventListener("mouseleave", stopRecognition);
+    toggle.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      startRecognition();
+    });
+    toggle.addEventListener("touchend", stopRecognition);
+
+    // 語音處理
+    recognition.onresult = (event) => {
+      interimText = "";
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalText = transcript; // 僅保留最後一句
+        } else {
+          interimText += transcript;
+        }
+      }
+      output.textContent = finalText + interimText;
+    };
+
+    recognition.onerror = (e) => {
+      alert("⚠️ 錯誤：" + e.error);
+    };
+
+    // 辨識結束 → 判斷語句 → 顯示與朗讀判斷結果
+    recognition.onend = () => {
+      const fullText = (finalText + interimText).trim();
+      output.textContent = fullText;
+
+      if (fullText) {
+        const commandText = handleCommand(fullText);
+        commandResult.textContent = commandText;
+
+        setTimeout(() => {
+          const utterance = new SpeechSynthesisUtterance(commandText);
+          utterance.lang = "zh-TW";
+          utterance.rate = 1;
+          utterance.pitch = 1;
+          utterance.volume = 1;
+          speechSynthesis.speak(utterance);
+        }, 300);
+      }
+    };
+  </script>
+</body>
+</html>
