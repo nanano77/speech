@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>語音圖層控制（GPT + MCP）</title>
+  <title>語音開關圖層 + 指令判斷顯示朗讀</title>
   <style>
     body { font-family: sans-serif; padding: 2em; }
     button {
@@ -25,23 +25,47 @@
       padding: 1em;
       min-height: 3em;
     }
-    #commandResult { background-color: #f0f0f0; }
+    #commandResult { background-color: #f5f5f5; }
+    #infoPanel {
+      background-color: #eef9ff;
+      border: 1px dashed #0c82f0;
+      padding: 1em;
+      margin-top: 2em;
+    }
+    ul {
+      margin: 0.5em 0;
+      padding-left: 1.5em;
+    }
   </style>
 </head>
 <body>
-  <h2>🎤 長按語音 → GPT 判斷 → 圖層控制</h2>
+  <h2>🎤 長按語音辨識 + 圖層開關判斷 + 結果朗讀</h2>
   <button id="toggle">按住說話</button>
-  <div id="output" class="box">（語音文字顯示）</div>
-  <div id="commandResult" class="box">（指令處理結果）</div>
+  <div id="output" class="box">（尚未開始）</div>
+  <div id="commandResult" class="box">（等待指令判斷）</div>
+
+  <div id="infoPanel">
+    <strong>📌 可操控圖層：</strong>
+    <ul id="layerListUI"></ul>
+    <strong>📢 支援的關鍵字：</strong>
+    <div>
+      <span>✅ 開啟：</span><span id="openWords"></span><br>
+      <span>❌ 關閉：</span><span id="closeWords"></span><br>
+      <span>🔁 特殊指令：</span>關閉全部、全部關閉、清除所有圖層
+    </div>
+    <strong>✅ 目前已開啟圖層：</strong>
+    <ul id="activeLayerList"></ul>
+  </div>
 
   <script>
     const output = document.getElementById("output");
     const commandResult = document.getElementById("commandResult");
     const toggle = document.getElementById("toggle");
+    const activeLayerList = document.getElementById("activeLayerList");
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("❌ 你的瀏覽器不支援語音辨識，請用 Chrome");
+      alert("❌ 你的瀏覽器不支援語音辨識，請改用 Chrome");
       toggle.disabled = true;
     }
 
@@ -53,30 +77,112 @@
     let finalText = "";
     let interimText = "";
 
-    const layers = {
-      adminLayer: {
-        name: "行政區",
-        show: () => console.log("✅ 顯示行政區圖層"),
-        hide: () => console.log("🚫 隱藏行政區圖層")
-      },
-      landuseLayer: {
-        name: "土地使用",
-        show: () => console.log("✅ 顯示土地使用圖層"),
-        hide: () => console.log("🚫 隱藏土地使用圖層")
-      },
-      agriLayer: {
-        name: "農業區",
-        show: () => console.log("✅ 顯示農業區圖層"),
-        hide: () => console.log("🚫 隱藏農業區圖層")
+    const layerList = [
+      { id: "adminLayer", name: "行政區" },
+      { id: "landuseLayer", name: "土地使用" },
+      { id: "agriLayer", name: "農業區" },
+      { id: "countyLayer", name: "縣市界" },
+      { id: "districtLayer", name: "區界" },
+      { id: "villageLayer", name: "鄰界" },
+      { id: "hsrLayer", name: "高鐵" },
+      { id: "metroLayer", name: "捷運" },
+      { id: "railLayer", name: "台鐵" },
+      { id: "riverLayer", name: "河川" },
+      { id: "landmarkLayer", name: "地標" },
+    ];
+
+    const layers = {};
+    const activeLayers = new Set();
+
+    layerList.forEach(layer => {
+      layers[layer.id] = {
+        name: layer.name,
+        show: () => {
+          console.log(`✅ 顯示${layer.name}圖層`);
+          activeLayers.add(layer.id);
+          updateActiveLayerUI();
+        },
+        hide: () => {
+          console.log(`🚫 隱藏${layer.name}圖層`);
+          activeLayers.delete(layer.id);
+          updateActiveLayerUI();
+        }
+      };
+    });
+
+    function updateActiveLayerUI() {
+      activeLayerList.innerHTML = "";
+      for (const id of activeLayers) {
+        const li = document.createElement("li");
+        li.textContent = layers[id].name;
+        activeLayerList.appendChild(li);
       }
-    };
+      if (activeLayers.size === 0) {
+        activeLayerList.innerHTML = '<li>（無）</li>';
+      }
+    }
+
+    const openKeywords = ["開啟", "打開", "顯示", "我要看", "展開", "叫出"];
+    const closeKeywords = ["關閉", "關掉", "隱藏", "收起", "不要看"];
+    const clearAllKeywords = ["全部關閉", "關閉全部", "清除所有圖層"];
+
+    async function handleCommand(text) {
+      if (clearAllKeywords.some(k => text.includes(k))) {
+        activeLayers.forEach(id => layers[id].hide());
+        return "🔁 已關閉全部圖層";
+      }
+
+      const gptResult = await queryGPT(text);
+      if (gptResult?.intent && Array.isArray(gptResult.targets)) {
+        gptResult.targets.forEach(id => {
+          if (layers[id]) {
+            if (gptResult.intent === "open") layers[id].show();
+            if (gptResult.intent === "close") layers[id].hide();
+          }
+        });
+        return `🤖 GPT判斷：${gptResult.intent === "open" ? "開啟" : "關閉"} ${gptResult.targets.map(id => layers[id]?.name).join("、")}`;
+      }
+
+      const isOpen = openKeywords.some(k => text.includes(k));
+      const isClose = closeKeywords.some(k => text.includes(k));
+
+      for (const layer of layerList) {
+        if (text.includes(layer.name)) {
+          if (isOpen) {
+            layers[layer.id].show();
+            return `✅ 已開啟${layer.name}圖層`;
+          } else if (isClose) {
+            layers[layer.id].hide();
+            return `🚫 已關閉${layer.name}圖層`;
+          }
+        }
+      }
+
+      return "⚠️ 無法判斷指令";
+    }
+
+    async function queryGPT(userInput) {
+      try {
+        const response = await fetch("/api/gpt", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ userInput })
+        });
+        return await response.json();
+      } catch (err) {
+        console.warn("GPT Proxy 錯誤：", err);
+        return null;
+      }
+    }
 
     const startRecognition = () => {
       finalText = "";
       interimText = "";
       recognition.start();
       output.textContent = "🎧 開始辨識中...";
-      commandResult.textContent = "（等待指令）";
+      commandResult.textContent = "（等待指令判斷）";
     };
 
     const stopRecognition = () => {
@@ -86,7 +192,7 @@
     toggle.addEventListener("mousedown", startRecognition);
     toggle.addEventListener("mouseup", stopRecognition);
     toggle.addEventListener("mouseleave", stopRecognition);
-    toggle.addEventListener("touchstart", e => {
+    toggle.addEventListener("touchstart", (e) => {
       e.preventDefault();
       startRecognition();
     });
@@ -96,73 +202,48 @@
       interimText = "";
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) finalText = transcript;
-        else interimText += transcript;
+        if (event.results[i].isFinal) {
+          finalText = transcript;
+        } else {
+          interimText += transcript;
+        }
       }
       output.textContent = finalText + interimText;
     };
 
-    recognition.onerror = (e) => alert("⚠️ 錯誤：" + e.error);
+    recognition.onerror = (e) => {
+      alert("⚠️ 錯誤：" + e.error);
+    };
 
     recognition.onend = async () => {
       const fullText = (finalText + interimText).trim();
       output.textContent = fullText;
 
-      if (!fullText) return;
+      if (fullText) {
+        const commandText = await handleCommand(fullText);
+        commandResult.textContent = commandText;
 
-      const result = await queryGPTWithMCP(fullText);
-
-      let responseText = "⚠️ 無法解析語句";
-      if (result?.intent && result?.target && layers[result.target]) {
-        const layer = layers[result.target];
-        if (result.intent === "open") {
-          layer.show();
-          responseText = `✅ 已開啟 ${layer.name} 圖層`;
-        } else if (result.intent === "close") {
-          layer.hide();
-          responseText = `🚫 已關閉 ${layer.name} 圖層`;
-        }
+        setTimeout(() => {
+          const utterance = new SpeechSynthesisUtterance(commandText);
+          utterance.lang = "zh-TW";
+          utterance.rate = 1;
+          utterance.pitch = 1;
+          utterance.volume = 1;
+          speechSynthesis.speak(utterance);
+        }, 300);
       }
-
-      commandResult.textContent = responseText;
-      setTimeout(() => {
-        const utterance = new SpeechSynthesisUtterance(responseText);
-        utterance.lang = "zh-TW";
-        speechSynthesis.speak(utterance);
-      }, 300);
     };
 
-    async function queryGPTWithMCP(userInput) {
-      const apiKey = "YOUR_OPENAI_API_KEY"; // ← 請替換
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: "gpt-3.5-turbo",
-          messages: [
-            {
-              role: "system",
-              content: `你是一個語音助理，負責控制圖層。請解析使用者語句並回傳 JSON 格式：{ "intent": "open|close", "target": "adminLayer|landuseLayer|agriLayer" }。目前圖層有：行政區、土地使用、農業區。`
-            },
-            {
-              role: "user",
-              content: userInput
-            }
-          ]
-        })
+    window.onload = () => {
+      const listUI = document.getElementById("layerListUI");
+      layerList.forEach(layer => {
+        const li = document.createElement("li");
+        li.textContent = layer.name;
+        listUI.appendChild(li);
       });
-
-      const data = await res.json();
-      try {
-        return JSON.parse(data.choices[0].message.content);
-      } catch (e) {
-        console.warn("❌ 回傳無法解析為 JSON：", data);
-        return null;
-      }
-    }
+      document.getElementById("openWords").textContent = openKeywords.join("、");
+      document.getElementById("closeWords").textContent = closeKeywords.join("、");
+    };
   </script>
 </body>
 </html>
