@@ -55,64 +55,50 @@
     let finalText = "";
     let interimText = "";
 
-    // 模擬圖層物件
-    const layers = {
-      adminLayer: {
-        name: "行政區",
-        show: () => console.log("✅ 顯示行政區圖層"),
-        hide: () => console.log("🚫 隱藏行政區圖層"),
-      },
-      landuseLayer: {
-        name: "土地使用",
-        show: () => console.log("✅ 顯示土地使用圖層"),
-        hide: () => console.log("🚫 隱藏土地使用圖層"),
-      },
-      agriLayer: {
-        name: "農業區",
-        show: () => console.log("✅ 顯示農業區圖層"),
-        hide: () => console.log("🚫 隱藏農業區圖層"),
-      },
-    };
+    const layerList = [
+      { id: "adminLayer", name: "行政區" },
+      { id: "landuseLayer", name: "土地使用" },
+      { id: "agriLayer", name: "農業區" },
+      { id: "countyLayer", name: "縣市界" },
+      { id: "districtLayer", name: "區界" },
+      { id: "villageLayer", name: "鄰界" },
+      { id: "hsrLayer", name: "高鐵" },
+      { id: "metroLayer", name: "捷運" },
+      { id: "railLayer", name: "台鐵" },
+      { id: "riverLayer", name: "河川" },
+      { id: "landmarkLayer", name: "地標" },
+    ];
+
+    const layers = {};
+    layerList.forEach(layer => {
+      layers[layer.id] = {
+        name: layer.name,
+        show: () => console.log(`✅ 顯示${layer.name}圖層`),
+        hide: () => console.log(`🚫 隱藏${layer.name}圖層`)
+      };
+    });
 
     const openKeywords = ["開啟", "打開", "顯示", "我要看", "展開", "叫出"];
     const closeKeywords = ["關閉", "關掉", "隱藏", "收起", "不要看"];
-    
+
     const handleCommand = (text) => {
       const isOpen = openKeywords.some(k => text.includes(k));
       const isClose = closeKeywords.some(k => text.includes(k));
-    
-      if (text.includes("行政區")) {
-        if (isOpen) {
-          layers.adminLayer.show();
-          return "已開啟行政區圖層";
-        } else if (isClose) {
-          layers.adminLayer.hide();
-          return "已關閉行政區圖層";
-        }
-      }
-      if (text.includes("土地使用")) {
-        if (isOpen) {
-          layers.landuseLayer.show();
-          return "已開啟土地使用圖層";
-        } else if (isClose) {
-          layers.landuseLayer.hide();
-          return "已關閉土地使用圖層";
-        }
-      }
-      if (text.includes("農業區")) {
-        if (isOpen) {
-          layers.agriLayer.show();
-          return "已開啟農業區圖層";
-        } else if (isClose) {
-          layers.agriLayer.hide();
-          return "已關閉農業區圖層";
+
+      for (const layer of layerList) {
+        if (text.includes(layer.name)) {
+          if (isOpen) {
+            layers[layer.id].show();
+            return `✅ 已開啟${layer.name}圖層`;
+          } else if (isClose) {
+            layers[layer.id].hide();
+            return `🚫 已關閉${layer.name}圖層`;
+          }
         }
       }
       return "⚠️ 無法判斷指令";
     };
 
-
-    // 開始辨識
     const startRecognition = () => {
       finalText = "";
       interimText = "";
@@ -121,12 +107,10 @@
       commandResult.textContent = "（等待指令判斷）";
     };
 
-    // 停止辨識
     const stopRecognition = () => {
       recognition.stop();
     };
 
-    // 綁定事件（滑鼠與手機觸控）
     toggle.addEventListener("mousedown", startRecognition);
     toggle.addEventListener("mouseup", stopRecognition);
     toggle.addEventListener("mouseleave", stopRecognition);
@@ -136,13 +120,12 @@
     });
     toggle.addEventListener("touchend", stopRecognition);
 
-    // 語音處理
     recognition.onresult = (event) => {
       interimText = "";
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalText = transcript; // 僅保留最後一句
+          finalText = transcript;
         } else {
           interimText += transcript;
         }
@@ -154,7 +137,6 @@
       alert("⚠️ 錯誤：" + e.error);
     };
 
-    // 辨識結束 → 判斷語句 → 顯示與朗讀判斷結果
     recognition.onend = () => {
       const fullText = (finalText + interimText).trim();
       output.textContent = fullText;
