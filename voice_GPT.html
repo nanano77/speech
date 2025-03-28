@@ -2,6 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>語音開關圖層 + 指令判斷顯示朗讀</title>
   <style>
     body { font-family: sans-serif; padding: 2em; }
@@ -35,6 +36,27 @@
     ul {
       margin: 0.5em 0;
       padding-left: 1.5em;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 1em;
+        font-size: 1.1em;
+      }
+      h2 {
+        font-size: 1.3em;
+      }
+      button {
+        font-size: 1.1em;
+        padding: 1em 1.5em;
+      }
+      .box {
+        font-size: 1.2em;
+        padding: 1em;
+      }
+      #infoPanel {
+        font-size: 1em;
+      }
     }
   </style>
 </head>
