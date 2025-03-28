@@ -150,15 +150,15 @@
         if (text.includes(layer.name)) {
           if (isOpen) {
             layers[layer.id].show();
-            return `✅ 已開啟${layer.name}圖層`;
+            return `已開啟${layer.name}圖層`;
           } else if (isClose) {
             layers[layer.id].hide();
-            return `🚫 已關閉${layer.name}圖層`;
+            return `已關閉${layer.name}圖層`;
           }
         }
       }
 
-      return "⚠️ 無法判斷指令";
+      return "⚠無法判斷指令";
     }
 
     async function queryGPT(userInput) {
