@@ -230,7 +230,7 @@
           }
         }
 
-        return ["⚠無法判斷指令", ""];
+        return ["無法判斷指令", ""];
       } else {
         const gptResult = await queryGPT(text);
         if (gptResult?.intent === "clear") {
@@ -248,7 +248,7 @@
           const resultLine = `${actionText} ${gptResult.targets.map(id => layers[id]?.name).join("、")}`;
           return [resultLine, "（由 GPT 判斷）"];
         }
-        return ["⚠無法判斷指令", ""];
+        return ["無法判斷指令", ""];
       }
     }
 
