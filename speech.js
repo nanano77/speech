@@ -83,23 +83,32 @@ recognition.onresult = (event) => {
   }
 };
 
+let pendingIntent = ""; // 🔁 全域暫存意圖（初始為空）
+
 recognition.onend = async () => {
   const fullText = (finalText + interimText).trim();
   if (!fullText) return;
 
   appendMessage(fullText, "user");
 
-  const intent = await queryIntention(fullText);
+  // 🧠 決定使用 AI 還是用 pendingIntent
+  const intent = pendingIntent || await queryIntention(fullText);
   console.log("🎯 意圖分類：", intent);
 
   if (intent === "layer") {
-    const [msg, detail] = await handleCommand(fullText, modeSelector.value, updateActiveLayerUI);
+    // 傳入額外參數 pendingIntentRef 用於更新它
+    const [msg, detail, stillPending] = await handleCommand(fullText, modeSelector.value, updateActiveLayerUI);
+
     appendMessage(`${msg}\n${detail}`, "system");
 
     const utter = new SpeechSynthesisUtterance(msg);
     utter.lang = "zh-TW";
     speechSynthesis.speak(utter);
+
+    // 若該次對話尚未完成（如 ambiguous），保留意圖
+    pendingIntent = stillPending ? intent : "";
   } else {
+    pendingIntent = ""; // 非圖層意圖，清空意圖記憶
     const msg = `🎯 偵測到意圖為「${intent}」，目前尚未支援此功能`;
     appendMessage(msg, "system");
 
