@@ -44,5 +44,16 @@
   </div>
 
   <script src="/api/identify.js"></script>
+  <script>
+    // Modal 控制
+    function openModal(id) {
+      document.getElementById('overlay').style.display = 'block';
+      document.getElementById(id).style.display = 'block';
+    }
+    function closeModal() {
+      document.getElementById('overlay').style.display = 'none';
+      document.querySelectorAll('.modal').forEach(el => el.style.display = 'none');
+    }
+  </script>
 </body>
 </html>
