@@ -7,7 +7,7 @@ import {
   openKeywords,
   closeKeywords,
   initLayerListUI
-} from './layerControl.js';
+} from './layerControlV2.js';
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (!SpeechRecognition) {
