@@ -1,20 +1,12 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>語音圖層聊天室</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>語音開關圖層 + 聊天氣泡介面</title>
   <style>
-    body {
-      font-family: sans-serif;
-      padding: 1em;
-      background-color: #e5ddd5;
-    }
-
-    h2 {
-      margin-bottom: 0.5em;
-    }
-
+    body { font-family: sans-serif; padding: 1em; background-color: #e5ddd5; }
+    h2 { margin-bottom: 0.5em; }
     .toolbar {
       display: flex;
       gap: 1em;
@@ -22,7 +14,6 @@
       flex-wrap: wrap;
       margin-bottom: 1em;
     }
-
     button {
       padding: 0.8em 1.2em;
       font-size: 1.1em;
@@ -32,27 +23,23 @@
       border-radius: 8px;
       cursor: pointer;
     }
-
     button:active {
       background-color: #0a6fd0;
     }
-
     select {
       font-size: 1em;
       padding: 0.4em;
     }
-
     .chatbox {
       background: #f1f1f1;
       border-radius: 8px;
       padding: 1em;
-      height: 65vh;
+      max-height: 45vh;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
       gap: 1em;
     }
-
     .message {
       max-width: 75%;
       padding: 0.8em 1em;
@@ -62,28 +49,58 @@
       word-wrap: break-word;
       line-height: 1.5;
     }
-
     .user {
       align-self: flex-end;
       background-color: #dcf8c6;
       border-bottom-right-radius: 0;
     }
-
     .system {
       align-self: flex-start;
       background-color: #ffffff;
       border-bottom-left-radius: 0;
     }
-
-    @media (max-width: 768px) {
-      .chatbox {
-        height: 60vh;
-      }
+    .box {
+      margin-top: 1em;
+      font-size: 1.2em;
+      white-space: pre-wrap;
+      border: 1px solid #ccc;
+      padding: 1em;
+      min-height: 3em;
+    }
+    #activePanel {
+      background-color:#f8fff2;
+    }
+    #infoPanel {
+      background-color: #eef9ff;
+      border: 1px dashed #0c82f0;
+      padding: 1em;
+      margin-top: 1em;
+    }
+    ul {
+      margin: 0.5em 0;
+      padding-left: 1.5em;
+    }
+    .gridList {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5em 1.5em;
+      list-style: none;
+      padding-left: 0;
+    }
+    .gridList li {
+      padding-left: 1em;
+      position: relative;
+    }
+    .gridList li::before {
+      content: "\2022";
+      position: absolute;
+      left: 0;
+      color: #333;
     }
   </style>
 </head>
 <body>
-  <h2>語音聊天室控制圖層</h2>
+  <h2>語音圖層控制聊天室</h2>
   <div class="toolbar">
     <button id="toggle">🎤 按住說話</button>
     <label>
@@ -96,10 +113,32 @@
   </div>
   <div id="chat" class="chatbox"></div>
 
+  <div id="activePanel" class="box">
+    <strong>✅ 目前已開啟圖層：</strong>
+    <ul id="activeLayerList"></ul>
+  </div>
+
+  <div id="infoPanel">
+    <strong>📌 可操控圖層：</strong>
+    <ul id="layerListUI" class="gridList"></ul>
+    <strong>📢 支援的關鍵字：</strong>
+    <div>
+      <span>✅ 開啟：</span><span id="openWords"></span><br>
+      <span>❌ 關閉：</span><span id="closeWords"></span><br>
+      <span>🔁 特殊指令：</span>關閉全部、全部關閉
+    </div>
+  </div>
+
   <script>
+    const toggle = document.getElementById("toggle");
+    const chatbox = document.getElementById("chat");
+    const modeSelector = document.getElementById("mode");
+    const activeLayerList = document.getElementById("activeLayerList");
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("❌ 你的瀏覽器不支援語音辨識，請使用 Chrome");
+      alert("❌ 你的瀏覽器不支援語音辨識，請改用 Chrome");
+      toggle.disabled = true;
     }
 
     const recognition = new SpeechRecognition();
@@ -110,26 +149,13 @@
     let finalText = "";
     let interimText = "";
 
-    const toggle = document.getElementById("toggle");
-    const chatbox = document.getElementById("chat");
-    const modeSelector = document.getElementById("mode");
-
-    function appendMessage(text, sender = "system") {
-      const bubble = document.createElement("div");
-      bubble.className = `message ${sender}`;
-      bubble.textContent = text;
-      chatbox.appendChild(bubble);
-      chatbox.scrollTop = chatbox.scrollHeight;
-    }
-
     const layerList = [
       { id: "cadastreLayer", name: "地籍圖" },
       { id: "taitungSoilLayer", name: "臺東農地重劃區" },
       { id: "urbanZone2024", name: "都市計畫使用分區圖" },
-      { id: "publicPrivateLandLayer", name: "公私有土地分布圖" },
       { id: "organicLayer", name: "有機農地分布" },
       { id: "hotelLayer", name: "旅館" },
-      { id: "bnbLayer", name: "民宿" },
+      { id: "bnbLayer", name: "民宿" }
     ];
 
     const layers = {};
@@ -138,16 +164,22 @@
     layerList.forEach(layer => {
       layers[layer.id] = {
         name: layer.name,
-        show: () => {
-          console.log(`✅ 顯示 ${layer.name}`);
-          activeLayers.add(layer.id);
-        },
-        hide: () => {
-          console.log(`🚫 隱藏 ${layer.name}`);
-          activeLayers.delete(layer.id);
-        }
+        show: () => { activeLayers.add(layer.id); updateActiveLayerUI(); },
+        hide: () => { activeLayers.delete(layer.id); updateActiveLayerUI(); }
       };
     });
+
+    function updateActiveLayerUI() {
+      activeLayerList.innerHTML = "";
+      for (const id of activeLayers) {
+        const li = document.createElement("li");
+        li.textContent = layers[id].name;
+        activeLayerList.appendChild(li);
+      }
+      if (activeLayers.size === 0) {
+        activeLayerList.innerHTML = '<li>（無）</li>';
+      }
+    }
 
     const openKeywords = ["開啟", "打開", "顯示", "我要看", "展開", "叫出"];
     const closeKeywords = ["關閉", "關掉", "隱藏", "收起", "不要看"];
@@ -167,13 +199,8 @@
 
         for (const layer of layerList) {
           if (text.includes(layer.name)) {
-            if (isOpen) {
-              layers[layer.id].show();
-              return [`已開啟 ${layer.name}`, "（本地規則判斷）"];
-            } else if (isClose) {
-              layers[layer.id].hide();
-              return [`已關閉 ${layer.name}`, "（本地規則判斷）"];
-            }
+            if (isOpen) { layers[layer.id].show(); return ["已開啟 " + layer.name, "（本地規則判斷）"]; }
+            if (isClose) { layers[layer.id].hide(); return ["已關閉 " + layer.name, "（本地規則判斷）"]; }
           }
         }
         return ["無法判斷指令", "（本地規則判斷）"];
@@ -192,7 +219,7 @@
             }
           });
           const names = gptResult.targets.map(id => layers[id]?.name).join("、");
-          return [`${actionText} ${names}`, "（GPT 判斷）"];
+          return [actionText + " " + names, "（GPT 判斷）"];
         }
         return ["無法判斷指令", "（GPT 判斷）"];
       }
@@ -212,52 +239,60 @@
       }
     }
 
+    function appendMessage(text, sender = "system") {
+      const bubble = document.createElement("div");
+      bubble.className = `message ${sender}`;
+      bubble.textContent = text;
+      chatbox.appendChild(bubble);
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
     const startRecognition = () => {
       finalText = "";
       interimText = "";
       recognition.start();
     };
-
-    const stopRecognition = () => {
-      recognition.stop();
-    };
+    const stopRecognition = () => recognition.stop();
 
     toggle.addEventListener("mousedown", startRecognition);
     toggle.addEventListener("mouseup", stopRecognition);
     toggle.addEventListener("mouseleave", stopRecognition);
-    toggle.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      startRecognition();
-    });
+    toggle.addEventListener("touchstart", e => { e.preventDefault(); startRecognition(); });
     toggle.addEventListener("touchend", stopRecognition);
 
     recognition.onresult = (event) => {
       interimText = "";
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalText = transcript;
-        } else {
-          interimText += transcript;
-        }
+        if (event.results[i].isFinal) finalText = transcript;
+        else interimText += transcript;
       }
     };
 
-    recognition.onerror = (e) => {
-      alert("⚠️ 錯誤：" + e.error);
-    };
+    recognition.onerror = e => alert("⚠️ 錯誤：" + e.error);
 
     recognition.onend = async () => {
       const fullText = (finalText + interimText).trim();
       if (fullText) {
         appendMessage(fullText, "user");
         const [mainText, detailText] = await handleCommand(fullText);
-        appendMessage(`${mainText}\n${detailText}`, "system");
+        appendMessage(mainText + "\n" + detailText, "system");
 
         const utterance = new SpeechSynthesisUtterance(mainText);
         utterance.lang = "zh-TW";
         speechSynthesis.speak(utterance);
       }
+    };
+
+    window.onload = () => {
+      const listUI = document.getElementById("layerListUI");
+      layerList.forEach(layer => {
+        const li = document.createElement("li");
+        li.textContent = layer.name;
+        listUI.appendChild(li);
+      });
+      document.getElementById("openWords").textContent = openKeywords.join("、");
+      document.getElementById("closeWords").textContent = closeKeywords.join("、");
     };
   </script>
 </body>
