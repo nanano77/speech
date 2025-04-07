@@ -122,6 +122,7 @@ async function queryGPT(userInput, lastCandidates = []) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userInput, lastCandidates })
     });
+    console.log("🧪 傳給 GPT 的候選清單：", lastCandidates);
     return await res.json();
   } catch (e) {
     console.warn("GPT 錯誤：", e);
