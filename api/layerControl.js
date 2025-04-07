@@ -109,3 +109,13 @@ async function queryGPT(userInput) {
     return null;
   }
 }
+export function initLayerListUI(domId) {
+  const listUI = document.getElementById(domId);
+  if (!listUI) return;
+  listUI.innerHTML = "";
+  layerList.forEach(layer => {
+    const li = document.createElement("li");
+    li.textContent = layer.name;
+    listUI.appendChild(li);
+  });
+}
