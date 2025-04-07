@@ -75,12 +75,7 @@ recognition.onend = async () => {
 
 window.onload = () => {
   setupLayers(updateActiveLayerUI);
-  const listUI = document.getElementById("layerListUI");
-  layerList.forEach(layer => {
-    const li = document.createElement("li");
-    li.textContent = layer.name;
-    listUI.appendChild(li);
-  });
+  initLayerListUI("layerListUI");
   document.getElementById("openWords").textContent = openKeywords.join("、");
   document.getElementById("closeWords").textContent = closeKeywords.join("、");
 };
