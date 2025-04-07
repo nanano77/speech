@@ -63,7 +63,20 @@ export default async function handler(req, res) {
 ${lastCandidates.map((id, i) => `${i + 1}. ${layerMap[id]} => ${id}`).join("\n")}`
       : "";
 
-    const systemPrompt = `你是一個圖層控制助理，請根據使用者語句判斷操作並回傳 JSON 格式如下：
+    const systemPrompt = lastCandidates.length > 0
+  ? `你是一個圖層控制助理。使用者剛剛收到候選圖層清單如下，請根據使用者輸入選擇對應圖層，並回傳 JSON：
+
+✅ 選擇候選圖層的語句，例如「第一個」、「我要看第 2 和第 3 個」：
+{
+  "intent": "open" | "close",
+  "targets": ["圖層代碼"]
+}
+
+候選清單如下（編號 => 圖層代碼）：
+${lastCandidates.map((id, i) => `${i + 1}. ${layerMap[id]} => ${id}`).join("\n")}
+
+請使用這些候選圖層中的代碼作為 targets 回傳，並避免使用非候選清單中的圖層。`
+  : `你是一個圖層控制助理。請根據使用者語句判斷操作並回傳 JSON 格式如下：
 
 ✅ 一般情況：
 {
@@ -77,8 +90,8 @@ ${lastCandidates.map((id, i) => `${i + 1}. ${layerMap[id]} => ${id}`).join("\n")
   "candidates": ["圖層代碼"]
 }
 
-目前支援的圖層如下（中文名稱 => 圖層代碼）：
-${layerList.map(l => `${l.name} => ${l.id}`).join("\n")}${candidateBlock}
+目前支援圖層如下（中文名稱 => 圖層代碼）：
+${layerList.map(l => `${l.name} => ${l.id}`).join("\n")}
 
 請僅使用上述圖層代碼作為 targets 或 candidates。`;
 
