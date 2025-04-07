@@ -4,7 +4,104 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>語音圖層控制聊天室</title>
-  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body { font-family: sans-serif; padding: 1em; background-color: #e5ddd5; }
+    h2 { margin-bottom: 0.5em; }
+    .toolbar {
+      display: flex;
+      gap: 1em;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 1em;
+    }
+    button {
+      padding: 0.8em 1.2em;
+      font-size: 1.1em;
+      background-color: #0c82f0;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:active {
+      background-color: #0a6fd0;
+    }
+    select {
+      font-size: 1em;
+      padding: 0.4em;
+    }
+    .chatbox {
+      background: #f1f1f1;
+      border-radius: 8px;
+      padding: 1em;
+      height: 65vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1em;
+    }
+    .message {
+      max-width: 75%;
+      padding: 0.8em 1em;
+      border-radius: 16px;
+      position: relative;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      line-height: 1.5;
+    }
+    .user {
+      align-self: flex-end;
+      background-color: #dcf8c6;
+      border-bottom-right-radius: 0;
+    }
+    .system {
+      align-self: flex-start;
+      background-color: #ffffff;
+      border-bottom-left-radius: 0;
+    }
+    .modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 1em;
+      border: 2px solid #0c82f0;
+      border-radius: 12px;
+      max-width: 90vw;
+      max-height: 80vh;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+    }
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 999;
+      display: none;
+    }
+    .gridList {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5em 1.5em;
+      list-style: none;
+      padding-left: 0;
+    }
+    .gridList li {
+      padding-left: 1em;
+      position: relative;
+    }
+    .gridList li::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      color: #333;
+    }
+  </style>
 </head>
 <body>
   <h2>語音圖層控制聊天室</h2>
