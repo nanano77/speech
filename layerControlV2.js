@@ -96,7 +96,7 @@ export async function handleCommand(text, mode, updateUIFn) {
       lastCandidates = gptResult.candidates
         .map(id => ({ id, name: layers[id]?.name }))
         .filter(l => l.name);
-      const msg = "請問您要開啟哪一個圖層？";
+      const msg = "請問您要開啟哪一個或哪幾個圖層？（可複選，例如：第一個和第三個）";
       const detail = lastCandidates.map((l, i) => `${i + 1}. ${l.name}`).join("\n");
       return [msg, detail, true];
     }
