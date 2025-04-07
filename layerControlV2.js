@@ -112,6 +112,7 @@ export async function handleCommand(text, mode, updateUIFn) {
 
     return ["無法判斷指令", "（GPT 判斷）", false];
   }
+  console.log("GPT 回傳內容：", gptResult);
 }
 
 async function queryGPT(userInput, lastCandidates = []) {
