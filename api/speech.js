@@ -1,4 +1,4 @@
-import { handleCommand, setupLayers, layerList, openKeywords, closeKeywords } from './layerControl.js';
+import { setupLayers, layerList, openKeywords, closeKeywords, initLayerListUI } from './layerControl.js';
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (!SpeechRecognition) {
