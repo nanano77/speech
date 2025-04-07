@@ -80,55 +80,58 @@ export async function handleCommand(text, mode, updateUIFn) {
     }
     return ["無法判斷指令", "（本地規則判斷）", false];
   } else {
-    const gptResult = await queryGPT(text, lastCandidates.map(l => l.id));
+    const candidateIds = lastCandidates
+      .filter(l => l && typeof l.id === "string")
+      .map(l => l.id);
+
+    const gptResult = await queryGPT(text, candidateIds);
     console.log("GPT 回傳內容：", gptResult);
-    // 清除所有圖層
+
     if (gptResult?.intent === "clear") {
       activeLayers.forEach(id => layers[id].hide());
       return ["已關閉全部圖層", "（GPT 判斷）", false];
     }
 
-    // 模糊情況：需要候選選擇
     if (gptResult?.intent === "ambiguous") {
-      lastCandidates = gptResult.candidates.map(id => layers[id]).filter(Boolean);
+      lastCandidates = gptResult.candidates
+        .map(id => ({ id, name: layers[id]?.name }))
+        .filter(l => l.name);
       const msg = "請問您要開啟哪一個圖層？";
       const detail = lastCandidates.map((l, i) => `${i + 1}. ${l.name}`).join("\n");
-      return [msg, detail, true]; // ⬅️ 還在等使用者補充
+      return [msg, detail, true];
     }
 
-    // 確定操作圖層
     lastCandidates = [];
     if (gptResult?.intent && Array.isArray(gptResult.targets)) {
       const actionText = gptResult.intent === "open" ? "已開啟" : "已關閉";
-      gptResult.targets.forEach(id => {
-        if (layers[id]) {
-          if (gptResult.intent === "open") layers[id].show();
-          if (gptResult.intent === "close") layers[id].hide();
-        }
+      const validTargets = gptResult.targets.filter(id => layers[id]);
+      validTargets.forEach(id => {
+        if (gptResult.intent === "open") layers[id].show();
+        if (gptResult.intent === "close") layers[id].hide();
       });
-      const names = gptResult.targets.map(id => layers[id]?.name).join("、");
-      return [`${actionText} ${names}`, "（GPT 判斷）", false]; // ✅ 完成
+      const names = validTargets.map(id => layers[id]?.name).join("、");
+      return [`${actionText} ${names}`, "（GPT 判斷）", false];
     }
 
     return ["無法判斷指令", "（GPT 判斷）", false];
   }
-  
 }
 
 async function queryGPT(userInput, lastCandidates = []) {
   try {
+    console.log("🧪 傳給 GPT 的候選清單：", lastCandidates);
     const res = await fetch("/api/ttV2", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userInput, lastCandidates })
     });
-    console.log("🧪 傳給 GPT 的候選清單：", lastCandidates);
     return await res.json();
   } catch (e) {
     console.warn("GPT 錯誤：", e);
     return null;
   }
 }
+
 export function initLayerListUI(domId) {
   const listUI = document.getElementById(domId);
   if (!listUI) return;
