@@ -1,4 +1,13 @@
-import { setupLayers, layerList, openKeywords, closeKeywords, initLayerListUI } from './layerControl.js';
+import {
+  setupLayers,
+  handleCommand,
+  layerList,
+  layers,
+  activeLayers,
+  openKeywords,
+  closeKeywords,
+  initLayerListUI
+} from './layerControl.js';
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (!SpeechRecognition) {
@@ -18,16 +27,14 @@ const activeLayerList = document.getElementById("activeLayerList");
 
 function updateActiveLayerUI() {
   activeLayerList.innerHTML = "";
-  import('./layerControl.js').then(({ activeLayers, layers }) => {
-    for (const id of activeLayers) {
-      const li = document.createElement("li");
-      li.textContent = layers[id].name;
-      activeLayerList.appendChild(li);
-    }
-    if (activeLayers.size === 0) {
-      activeLayerList.innerHTML = "<li>（無）</li>";
-    }
-  });
+  for (const id of activeLayers) {
+    const li = document.createElement("li");
+    li.textContent = layers[id].name;
+    activeLayerList.appendChild(li);
+  }
+  if (activeLayers.size === 0) {
+    activeLayerList.innerHTML = "<li>（無）</li>";
+  }
 }
 
 function appendMessage(text, sender = "system") {
@@ -73,9 +80,10 @@ recognition.onend = async () => {
   }
 };
 
-window.onload = () => {
+// ✅ DOM 完成後初始化
+document.addEventListener("DOMContentLoaded", () => {
   setupLayers(updateActiveLayerUI);
   initLayerListUI("layerListUI");
   document.getElementById("openWords").textContent = openKeywords.join("、");
   document.getElementById("closeWords").textContent = closeKeywords.join("、");
-};
+});
