@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>語音開關圖層 + 聊天氣泡介面</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>語音圖層控制聊天室</title>
   <style>
     body { font-family: sans-serif; padding: 1em; background-color: #e5ddd5; }
     h2 { margin-bottom: 0.5em; }
@@ -34,7 +34,7 @@
       background: #f1f1f1;
       border-radius: 8px;
       padding: 1em;
-      max-height: 45vh;
+      height: 65vh;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
@@ -59,26 +59,30 @@
       background-color: #ffffff;
       border-bottom-left-radius: 0;
     }
-    .box {
-      margin-top: 1em;
-      font-size: 1.2em;
-      white-space: pre-wrap;
-      border: 1px solid #ccc;
+    .modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
       padding: 1em;
-      min-height: 3em;
+      border: 2px solid #0c82f0;
+      border-radius: 12px;
+      max-width: 90vw;
+      max-height: 80vh;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
     }
-    #activePanel {
-      background-color:#f8fff2;
-    }
-    #infoPanel {
-      background-color: #eef9ff;
-      border: 1px dashed #0c82f0;
-      padding: 1em;
-      margin-top: 1em;
-    }
-    ul {
-      margin: 0.5em 0;
-      padding-left: 1.5em;
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 999;
+      display: none;
     }
     .gridList {
       display: grid;
@@ -92,7 +96,7 @@
       position: relative;
     }
     .gridList li::before {
-      content: "\2022";
+      content: "•";
       position: absolute;
       left: 0;
       color: #333;
@@ -102,7 +106,6 @@
 <body>
   <h2>語音圖層控制聊天室</h2>
   <div class="toolbar">
-    <button id="toggle">🎤 按住說話</button>
     <label>
       模式：
       <select id="mode">
@@ -110,16 +113,24 @@
         <option value="gpt">GPT 模型</option>
       </select>
     </label>
+    <button onclick="openModal('activeModal')">✅ 已開啟圖層</button>
+    <button onclick="openModal('infoModal')">📌 可操控圖層</button>
   </div>
-  <div id="chat" class="chatbox"></div>
 
-  <div id="activePanel" class="box">
-    <strong>✅ 目前已開啟圖層：</strong>
+  <div id="chat" class="chatbox"></div>
+  <div style="text-align:center; margin-top:1em;">
+    <button id="toggle">🎤 按住說話</button>
+  </div>
+
+  <div class="modal-overlay" id="overlay" onclick="closeModal()"></div>
+
+  <div class="modal" id="activeModal">
+    <h3>✅ 目前已開啟圖層：</h3>
     <ul id="activeLayerList"></ul>
   </div>
 
-  <div id="infoPanel">
-    <strong>📌 可操控圖層：</strong>
+  <div class="modal" id="infoModal">
+    <h3>📌 可操控圖層：</h3>
     <ul id="layerListUI" class="gridList"></ul>
     <strong>📢 支援的關鍵字：</strong>
     <div>
@@ -130,15 +141,20 @@
   </div>
 
   <script>
-    const toggle = document.getElementById("toggle");
-    const chatbox = document.getElementById("chat");
-    const modeSelector = document.getElementById("mode");
-    const activeLayerList = document.getElementById("activeLayerList");
+    // Modal 控制
+    function openModal(id) {
+      document.getElementById('overlay').style.display = 'block';
+      document.getElementById(id).style.display = 'block';
+    }
+    function closeModal() {
+      document.getElementById('overlay').style.display = 'none';
+      document.querySelectorAll('.modal').forEach(el => el.style.display = 'none');
+    }
 
+    // 語音相關
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       alert("❌ 你的瀏覽器不支援語音辨識，請改用 Chrome");
-      toggle.disabled = true;
     }
 
     const recognition = new SpeechRecognition();
@@ -146,8 +162,11 @@
     recognition.continuous = true;
     recognition.interimResults = true;
 
-    let finalText = "";
-    let interimText = "";
+    let finalText = "", interimText = "";
+    const toggle = document.getElementById("toggle");
+    const chatbox = document.getElementById("chat");
+    const modeSelector = document.getElementById("mode");
+    const activeLayerList = document.getElementById("activeLayerList");
 
     const layerList = [
       { id: "cadastreLayer", name: "地籍圖" },
@@ -206,7 +225,7 @@
         activeLayerList.appendChild(li);
       }
       if (activeLayers.size === 0) {
-        activeLayerList.innerHTML = '<li>（無）</li>';
+        activeLayerList.innerHTML = "<li>（無）</li>";
       }
     }
 
@@ -228,8 +247,13 @@
 
         for (const layer of layerList) {
           if (text.includes(layer.name)) {
-            if (isOpen) { layers[layer.id].show(); return ["已開啟 " + layer.name, "（本地規則判斷）"]; }
-            if (isClose) { layers[layer.id].hide(); return ["已關閉 " + layer.name, "（本地規則判斷）"]; }
+            if (isOpen) {
+              layers[layer.id].show();
+              return [`已開啟 ${layer.name}`, "（本地規則判斷）"];
+            } else if (isClose) {
+              layers[layer.id].hide();
+              return [`已關閉 ${layer.name}`, "（本地規則判斷）"];
+            }
           }
         }
         return ["無法判斷指令", "（本地規則判斷）"];
@@ -248,7 +272,7 @@
             }
           });
           const names = gptResult.targets.map(id => layers[id]?.name).join("、");
-          return [actionText + " " + names, "（GPT 判斷）"];
+          return [`${actionText} ${names}`, "（GPT 判斷）"];
         }
         return ["無法判斷指令", "（GPT 判斷）"];
       }
@@ -256,14 +280,14 @@
 
     async function queryGPT(userInput) {
       try {
-        const response = await fetch("/api/tt", {
+        const res = await fetch("/api/tt", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userInput })
         });
-        return await response.json();
-      } catch (err) {
-        console.warn("GPT 錯誤：", err);
+        return await res.json();
+      } catch (e) {
+        console.warn("GPT 錯誤：", e);
         return null;
       }
     }
@@ -277,10 +301,10 @@
     }
 
     const startRecognition = () => {
-      finalText = "";
-      interimText = "";
+      finalText = ""; interimText = "";
       recognition.start();
     };
+
     const stopRecognition = () => recognition.stop();
 
     toggle.addEventListener("mousedown", startRecognition);
@@ -298,18 +322,16 @@
       }
     };
 
-    recognition.onerror = e => alert("⚠️ 錯誤：" + e.error);
-
     recognition.onend = async () => {
       const fullText = (finalText + interimText).trim();
       if (fullText) {
         appendMessage(fullText, "user");
-        const [mainText, detailText] = await handleCommand(fullText);
-        appendMessage(mainText + "\n" + detailText, "system");
+        const [msg, detail] = await handleCommand(fullText);
+        appendMessage(`${msg}\n${detail}`, "system");
 
-        const utterance = new SpeechSynthesisUtterance(mainText);
-        utterance.lang = "zh-TW";
-        speechSynthesis.speak(utterance);
+        const utter = new SpeechSynthesisUtterance(msg);
+        utter.lang = "zh-TW";
+        speechSynthesis.speak(utter);
       }
     };
 
