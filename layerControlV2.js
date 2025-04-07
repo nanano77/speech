@@ -61,7 +61,7 @@ export async function handleCommand(text, mode, updateUIFn) {
   if (mode === "local") {
     if (clearAllKeywords.some(k => text.includes(k))) {
       activeLayers.forEach(id => layers[id].hide());
-      return ["已關閉全部圖層", "（本地規則判斷）"];
+      return ["已關閉全部圖層", "（本地規則判斷）", false];
     }
 
     const isOpen = openKeywords.some(k => text.includes(k));
@@ -71,29 +71,32 @@ export async function handleCommand(text, mode, updateUIFn) {
       if (text.includes(layer.name)) {
         if (isOpen) {
           layers[layer.id].show();
-          return [`已開啟 ${layer.name}`, "（本地規則判斷）"];
+          return [`已開啟 ${layer.name}`, "（本地規則判斷）", false];
         } else if (isClose) {
           layers[layer.id].hide();
-          return [`已關閉 ${layer.name}`, "（本地規則判斷）"];
+          return [`已關閉 ${layer.name}`, "（本地規則判斷）", false];
         }
       }
     }
-    return ["無法判斷指令", "（本地規則判斷）"];
+    return ["無法判斷指令", "（本地規則判斷）", false];
   } else {
     const gptResult = await queryGPT(text, lastCandidates.map(l => l.id));
 
+    // 清除所有圖層
     if (gptResult?.intent === "clear") {
       activeLayers.forEach(id => layers[id].hide());
-      return ["已關閉全部圖層", "（GPT 判斷）"];
+      return ["已關閉全部圖層", "（GPT 判斷）", false];
     }
 
+    // 模糊情況：需要候選選擇
     if (gptResult?.intent === "ambiguous") {
       lastCandidates = gptResult.candidates.map(id => layers[id]).filter(Boolean);
       const msg = "請問您要開啟哪一個圖層？";
       const detail = lastCandidates.map((l, i) => `${i + 1}. ${l.name}`).join("\n");
-      return [msg, detail];
+      return [msg, detail, true]; // ⬅️ 還在等使用者補充
     }
 
+    // 確定操作圖層
     lastCandidates = [];
     if (gptResult?.intent && Array.isArray(gptResult.targets)) {
       const actionText = gptResult.intent === "open" ? "已開啟" : "已關閉";
@@ -104,25 +107,13 @@ export async function handleCommand(text, mode, updateUIFn) {
         }
       });
       const names = gptResult.targets.map(id => layers[id]?.name).join("、");
-      return [`${actionText} ${names}`, "（GPT 判斷）"];
+      return [`${actionText} ${names}`, "（GPT 判斷）", false]; // ✅ 完成
     }
-    return ["無法判斷指令", "（GPT 判斷）"];
+
+    return ["無法判斷指令", "（GPT 判斷）", false];
   }
 }
 
-async function queryGPT(userInput, lastCandidates = []) {
-  try {
-    const res = await fetch("/api/ttV2", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userInput, lastCandidates })
-    });
-    return await res.json();
-  } catch (e) {
-    console.warn("GPT 錯誤：", e);
-    return null;
-  }
-}
 
 export function initLayerListUI(domId) {
   const listUI = document.getElementById(domId);
