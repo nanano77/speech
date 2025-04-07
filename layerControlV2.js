@@ -114,7 +114,19 @@ export async function handleCommand(text, mode, updateUIFn) {
   }
 }
 
-
+async function queryGPT(userInput) {
+  try {
+    const res = await fetch("/api/tt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userInput })
+    });
+    return await res.json();
+  } catch (e) {
+    console.warn("GPT 錯誤：", e);
+    return null;
+  }
+}
 export function initLayerListUI(domId) {
   const listUI = document.getElementById(domId);
   if (!listUI) return;
