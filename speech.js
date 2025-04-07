@@ -45,7 +45,7 @@ function appendMessage(text, sender = "system") {
   chatbox.scrollTop = chatbox.scrollHeight;
 }
 
-// 🎯 語意分類 API：POST /api/intention
+// 🎯 語意判斷
 async function queryIntention(text) {
   try {
     const res = await fetch("/api/intention", {
@@ -56,7 +56,7 @@ async function queryIntention(text) {
     const json = await res.json();
     return json?.category || "unknown";
   } catch (err) {
-    console.warn("❌ 無法判斷語意：", err);
+    console.warn("❌ 語意判斷錯誤：", err);
     return "unknown";
   }
 }
@@ -90,7 +90,7 @@ recognition.onend = async () => {
   appendMessage(fullText, "user");
 
   const intent = await queryIntention(fullText);
-  console.log("意圖判斷結果：", intent);
+  console.log("🎯 意圖分類：", intent);
 
   if (intent === "layer") {
     const [msg, detail] = await handleCommand(fullText, modeSelector.value, updateActiveLayerUI);
@@ -100,14 +100,16 @@ recognition.onend = async () => {
     utter.lang = "zh-TW";
     speechSynthesis.speak(utter);
   } else {
-    appendMessage(`偵測到意圖為：${intent}，尚未支援該類型操作`, "system");
-    const utter = new SpeechSynthesisUtterance(`目前尚未支援 ${intent} 操作`);
+    const msg = `🎯 偵測到意圖為「${intent}」，目前尚未支援此功能`;
+    appendMessage(msg, "system");
+
+    const utter = new SpeechSynthesisUtterance("目前尚未支援此功能");
     utter.lang = "zh-TW";
     speechSynthesis.speak(utter);
   }
 };
 
-// ✅ DOM 初始化
+// ✅ 頁面初始化
 document.addEventListener("DOMContentLoaded", () => {
   setupLayers(updateActiveLayerUI);
   initLayerListUI("layerListUI");
