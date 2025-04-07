@@ -114,12 +114,12 @@ export async function handleCommand(text, mode, updateUIFn) {
   }
 }
 
-async function queryGPT(userInput) {
+async function queryGPT(userInput, lastCandidates = []) {
   try {
-    const res = await fetch("/api/tt", {
+    const res = await fetch("/api/ttV2", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userInput })
+      body: JSON.stringify({ userInput, lastCandidates })
     });
     return await res.json();
   } catch (e) {
