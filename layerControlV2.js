@@ -81,7 +81,7 @@ export async function handleCommand(text, mode, updateUIFn) {
     return ["無法判斷指令", "（本地規則判斷）", false];
   } else {
     const gptResult = await queryGPT(text, lastCandidates.map(l => l.id));
-
+    console.log("GPT 回傳內容：", gptResult);
     // 清除所有圖層
     if (gptResult?.intent === "clear") {
       activeLayers.forEach(id => layers[id].hide());
@@ -112,7 +112,7 @@ export async function handleCommand(text, mode, updateUIFn) {
 
     return ["無法判斷指令", "（GPT 判斷）", false];
   }
-  console.log("GPT 回傳內容：", gptResult);
+  
 }
 
 async function queryGPT(userInput, lastCandidates = []) {
