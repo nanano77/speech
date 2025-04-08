@@ -108,8 +108,8 @@
         <option value="gpt">GPT 模型</option>
       </select>
     </label>
-    <button onclick="openModal('activeModal')">✅ 已開啟圖層</button>
-    <button onclick="openModal('infoModal')">📌 可操控圖層</button>
+    <button data-open-modal="activeModal">✅ 已開啟圖層</button>
+    <button data-open-modal="infoModal">📌 可操控圖層</button>
   </div>
 
   <div data-chat class="chatbox"></div>
@@ -117,7 +117,7 @@
     <button class="my-voice-button">🎤 按住說話</button>
   </div>
 
-  <div class="modal-overlay" id="overlay" onclick="closeModal()"></div>
+  <div class="modal-overlay" data-modal-overlay></div>
 
   <div class="modal" id="activeModal">
     <h3>✅ 目前已開啟圖層：</h3>
@@ -135,17 +135,6 @@
     </div>
   </div>
 
-  <script>
-    // Modal 控制
-    function openModal(id) {
-      document.getElementById('overlay').style.display = 'block';
-      document.getElementById(id).style.display = 'block';
-    }
-    function closeModal() {
-      document.getElementById('overlay').style.display = 'none';
-      document.querySelectorAll('.modal').forEach(el => el.style.display = 'none');
-    }
-  </script>
   <script type="module" src="speech.js"></script>
 </body>
 </html>
