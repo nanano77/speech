@@ -148,13 +148,21 @@ recognition.onend = async () => {
 document.addEventListener("DOMContentLoaded", () => {
   setupLayers(updateActiveLayerUI);
   initLayerListUI("[data-layer-list]");
+
+  // 綁定關閉 modal 的遮罩
   document.querySelector("[data-modal-overlay]")?.addEventListener("click", closeModal);
+
+  // 綁定開啟 modal 的按鈕
+  document.querySelectorAll("[data-open-modal]").forEach(button => {
+    const targetId = button.getAttribute("data-open-modal");
+    button.addEventListener("click", () => openModal(targetId));
+  });
+
+  // 更新關鍵字列表
   document.querySelector("[data-open-words]").textContent = openKeywords.join("、");
   document.querySelector("[data-close-words]").textContent = closeKeywords.join("、");
-  const overlay = document.querySelector("[data-modal-overlay]");
-  if (overlay) {
-    overlay.addEventListener("click", closeModal);
-  }
+
+  // 語音按鈕綁定
   const toggleBtn = document.querySelector(".my-voice-button");
   if (toggleBtn) {
     bindRecognitionButton(toggleBtn);
