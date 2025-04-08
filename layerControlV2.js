@@ -132,9 +132,13 @@ async function queryGPT(userInput, lastCandidates = []) {
   }
 }
 
-export function initLayerListUI(domId) {
-  const listUI = document.getElementById(domId);
+export function initLayerListUI(target) {
+  const listUI = typeof target === "string"
+    ? document.querySelector(target)
+    : target;
+
   if (!listUI) return;
+
   listUI.innerHTML = "";
   layerList.forEach(layer => {
     const li = document.createElement("li");
