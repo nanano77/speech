@@ -86,6 +86,23 @@ function bindRecognitionButton(button) {
   button.addEventListener("touchend", stopRecognition);
 }
 
+function openModal(modalId) {
+  const overlay = document.querySelector("[data-modal-overlay]");
+  const modal = document.getElementById(modalId);
+  if (overlay && modal) {
+    overlay.style.display = "block";
+    modal.style.display = "block";
+  }
+}
+
+function closeModal() {
+  const overlay = document.querySelector("[data-modal-overlay]");
+  const modals = document.querySelectorAll(".modal");
+
+  if (overlay) overlay.style.display = "none";
+  modals.forEach(modal => modal.style.display = "none");
+}
+
 // ✅ 語音結果處理
 recognition.onresult = (event) => {
   interimText = "";
@@ -131,10 +148,13 @@ recognition.onend = async () => {
 document.addEventListener("DOMContentLoaded", () => {
   setupLayers(updateActiveLayerUI);
   initLayerListUI("[data-layer-list]");
-
+  
   document.querySelector("[data-open-words]").textContent = openKeywords.join("、");
   document.querySelector("[data-close-words]").textContent = closeKeywords.join("、");
-
+  const overlay = document.querySelector("[data-modal-overlay]");
+  if (overlay) {
+    overlay.addEventListener("click", closeModal);
+  }
   const toggleBtn = document.querySelector(".my-voice-button");
   if (toggleBtn) {
     bindRecognitionButton(toggleBtn);
