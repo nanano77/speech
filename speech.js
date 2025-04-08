@@ -148,7 +148,7 @@ recognition.onend = async () => {
 document.addEventListener("DOMContentLoaded", () => {
   setupLayers(updateActiveLayerUI);
   initLayerListUI("[data-layer-list]");
-  
+  document.querySelector("[data-modal-overlay]")?.addEventListener("click", closeModal);
   document.querySelector("[data-open-words]").textContent = openKeywords.join("、");
   document.querySelector("[data-close-words]").textContent = closeKeywords.join("、");
   const overlay = document.querySelector("[data-modal-overlay]");
