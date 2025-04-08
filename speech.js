@@ -9,6 +9,7 @@ import {
   initLayerListUI
 } from './layerControlV2.js';
 
+// ✅ 初始化語音辨識
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (!SpeechRecognition) {
   alert("❌ 你的瀏覽器不支援語音辨識，請改用 Chrome");
@@ -20,11 +21,13 @@ recognition.continuous = true;
 recognition.interimResults = true;
 
 let finalText = "", interimText = "";
-const toggle = document.getElementById("toggle");
+let pendingIntent = ""; // 🔁 全域暫存意圖（初始為空）
+
 const chatbox = document.getElementById("chat");
 const modeSelector = document.getElementById("mode");
 const activeLayerList = document.getElementById("activeLayerList");
 
+// ✅ 動態更新 UI 上顯示的啟用圖層
 function updateActiveLayerUI() {
   activeLayerList.innerHTML = "";
   for (const id of activeLayers) {
@@ -37,6 +40,7 @@ function updateActiveLayerUI() {
   }
 }
 
+// ✅ 聊天視窗訊息渲染
 function appendMessage(text, sender = "system") {
   const bubble = document.createElement("div");
   bubble.className = `message ${sender}`;
@@ -45,7 +49,7 @@ function appendMessage(text, sender = "system") {
   chatbox.scrollTop = chatbox.scrollHeight;
 }
 
-// 🎯 語意判斷
+// ✅ 呼叫後端語意分析 API
 async function queryIntention(text) {
   try {
     const res = await fetch("/api/intention", {
@@ -61,6 +65,7 @@ async function queryIntention(text) {
   }
 }
 
+// ✅ 語音啟動 / 停止函式
 const startRecognition = () => {
   finalText = ""; interimText = "";
   recognition.start();
@@ -68,12 +73,19 @@ const startRecognition = () => {
 
 const stopRecognition = () => recognition.stop();
 
-toggle.addEventListener("mousedown", startRecognition);
-toggle.addEventListener("mouseup", stopRecognition);
-toggle.addEventListener("mouseleave", stopRecognition);
-toggle.addEventListener("touchstart", e => { e.preventDefault(); startRecognition(); });
-toggle.addEventListener("touchend", stopRecognition);
+// ✅ 將語音功能綁定到按鈕元素
+function bindRecognitionButton(button) {
+  button.addEventListener("mousedown", startRecognition);
+  button.addEventListener("mouseup", stopRecognition);
+  button.addEventListener("mouseleave", stopRecognition);
+  button.addEventListener("touchstart", e => {
+    e.preventDefault();
+    startRecognition();
+  });
+  button.addEventListener("touchend", stopRecognition);
+}
 
+// ✅ 語音結果處理
 recognition.onresult = (event) => {
   interimText = "";
   for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -83,20 +95,17 @@ recognition.onresult = (event) => {
   }
 };
 
-let pendingIntent = ""; // 🔁 全域暫存意圖（初始為空）
-
+// ✅ 語音結束時，處理語句與意圖
 recognition.onend = async () => {
   const fullText = (finalText + interimText).trim();
   if (!fullText) return;
 
   appendMessage(fullText, "user");
 
-  // 🧠 決定使用 AI 還是用 pendingIntent
   const intent = pendingIntent || await queryIntention(fullText);
   console.log("🎯 意圖分類：", intent);
 
   if (intent === "layer") {
-    // 傳入額外參數 pendingIntentRef 用於更新它
     const [msg, detail, stillPending] = await handleCommand(fullText, modeSelector.value, updateActiveLayerUI);
 
     appendMessage(`${msg}\n${detail}`, "system");
@@ -105,10 +114,9 @@ recognition.onend = async () => {
     utter.lang = "zh-TW";
     speechSynthesis.speak(utter);
 
-    // 若該次對話尚未完成（如 ambiguous），保留意圖
     pendingIntent = stillPending ? intent : "";
   } else {
-    pendingIntent = ""; // 非圖層意圖，清空意圖記憶
+    pendingIntent = "";
     const msg = `🎯 偵測到意圖為「${intent}」，目前尚未支援此功能`;
     appendMessage(msg, "system");
 
@@ -124,4 +132,10 @@ document.addEventListener("DOMContentLoaded", () => {
   initLayerListUI("layerListUI");
   document.getElementById("openWords").textContent = openKeywords.join("、");
   document.getElementById("closeWords").textContent = closeKeywords.join("、");
+
+  // 📌 改為用 class 綁定語音按鈕
+  const toggleBtn = document.querySelector(".my-voice-button");
+  if (toggleBtn) {
+    bindRecognitionButton(toggleBtn);
+  }
 });
