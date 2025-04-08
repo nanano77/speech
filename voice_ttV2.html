@@ -23,13 +23,8 @@
       border-radius: 8px;
       cursor: pointer;
     }
-    button:active {
-      background-color: #0a6fd0;
-    }
-    select {
-      font-size: 1em;
-      padding: 0.4em;
-    }
+    button:active { background-color: #0a6fd0; }
+    select { font-size: 1em; padding: 0.4em; }
     .chatbox {
       background: #f1f1f1;
       border-radius: 8px;
@@ -108,7 +103,7 @@
   <div class="toolbar">
     <label>
       模式：
-      <select id="mode">
+      <select data-mode>
         <option value="local">本地規則</option>
         <option value="gpt">GPT 模型</option>
       </select>
@@ -117,7 +112,7 @@
     <button onclick="openModal('infoModal')">📌 可操控圖層</button>
   </div>
 
-  <div id="chat" class="chatbox"></div>
+  <div data-chat class="chatbox"></div>
   <div style="text-align:center; margin-top:1em;">
     <button class="my-voice-button">🎤 按住說話</button>
   </div>
@@ -126,16 +121,16 @@
 
   <div class="modal" id="activeModal">
     <h3>✅ 目前已開啟圖層：</h3>
-    <ul id="activeLayerList"></ul>
+    <ul data-active-layer></ul>
   </div>
 
   <div class="modal" id="infoModal">
     <h3>📌 可操控圖層：</h3>
-    <ul id="layerListUI" class="gridList"></ul>
+    <ul data-layer-list class="gridList"></ul>
     <strong>📢 支援的關鍵字：</strong>
     <div>
-      <span>✅ 開啟：</span><span id="openWords"></span><br>
-      <span>❌ 關閉：</span><span id="closeWords"></span><br>
+      <span>✅ 開啟：</span><span data-open-words></span><br>
+      <span>❌ 關閉：</span><span data-close-words></span><br>
       <span>🔁 特殊指令：</span>關閉全部、全部關閉
     </div>
   </div>
