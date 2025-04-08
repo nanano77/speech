@@ -21,11 +21,12 @@ recognition.continuous = true;
 recognition.interimResults = true;
 
 let finalText = "", interimText = "";
-let pendingIntent = ""; // 🔁 全域暫存意圖（初始為空）
+let pendingIntent = "";
 
-const chatbox = document.getElementById("chat");
-const modeSelector = document.getElementById("mode");
-const activeLayerList = document.getElementById("activeLayerList");
+// ✅ 使用 data-* 的方式取得 DOM 元素
+const chatbox = document.querySelector("[data-chat]");
+const modeSelector = document.querySelector("[data-mode]");
+const activeLayerList = document.querySelector("[data-active-layer]");
 
 // ✅ 動態更新 UI 上顯示的啟用圖層
 function updateActiveLayerUI() {
@@ -73,7 +74,7 @@ const startRecognition = () => {
 
 const stopRecognition = () => recognition.stop();
 
-// ✅ 將語音功能綁定到按鈕元素
+// ✅ 綁定語音按鈕事件
 function bindRecognitionButton(button) {
   button.addEventListener("mousedown", startRecognition);
   button.addEventListener("mouseup", stopRecognition);
@@ -95,7 +96,7 @@ recognition.onresult = (event) => {
   }
 };
 
-// ✅ 語音結束時，處理語句與意圖
+// ✅ 語音結束處理
 recognition.onend = async () => {
   const fullText = (finalText + interimText).trim();
   if (!fullText) return;
@@ -129,11 +130,11 @@ recognition.onend = async () => {
 // ✅ 頁面初始化
 document.addEventListener("DOMContentLoaded", () => {
   setupLayers(updateActiveLayerUI);
-  initLayerListUI("layerListUI");
-  document.getElementById("openWords").textContent = openKeywords.join("、");
-  document.getElementById("closeWords").textContent = closeKeywords.join("、");
+  initLayerListUI("[data-layer-list]");
 
-  // 📌 改為用 class 綁定語音按鈕
+  document.querySelector("[data-open-words]").textContent = openKeywords.join("、");
+  document.querySelector("[data-close-words]").textContent = closeKeywords.join("、");
+
   const toggleBtn = document.querySelector(".my-voice-button");
   if (toggleBtn) {
     bindRecognitionButton(toggleBtn);
