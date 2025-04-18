@@ -93,13 +93,27 @@
       interimText = "";
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) finalText = transcript;
-        else interimText += transcript;
+    
+        if (event.results[i].isFinal) {
+          finalText = transcript.trim();
+          document.getElementById("finalText").textContent = finalText;
+    
+          // ✅ ✅ ✅ 這裡就是一句話完成時的觸發點
+          handleRecognizedSentence(finalText);
+    
+        } else {
+          interimText += transcript;
+          document.getElementById("interimText").textContent = interimText;
+        }
       }
-      document.getElementById("interimText").textContent = interimText;
-      document.getElementById("finalText").textContent = finalText;
     };
-
+    function handleRecognizedSentence(text) {
+      console.log("🎯 完整一句話：", text);
+      
+      // 👉 這裡可以加你要的動作：例如
+      // sendToGPT(text);
+      // controlMapLayer(text);
+    }
     recognition.onend = () => {
       isRecognizing = false;
       updateButtonUI();
