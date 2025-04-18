@@ -18,9 +18,10 @@
       background-color: #4CAF50;
       color: white;
       cursor: pointer;
+      transition: background-color 0.3s;
     }
-    #voiceButton:active {
-      background-color: #45a049;
+    #voiceButton.recording {
+      background-color: #d32f2f;
     }
     .text-box {
       margin-top: 30px;
@@ -33,19 +34,14 @@
       min-height: 60px;
       white-space: pre-wrap;
     }
-    #interimText {
-      color: #888;
-    }
-    #finalText {
-      color: #000;
-      font-weight: bold;
-    }
+    #interimText { color: #888; }
+    #finalText { color: #000; font-weight: bold; }
   </style>
 </head>
 <body>
 
   <h1>🎤 即時語音辨識系統</h1>
-  <button id="voiceButton">按住說話</button>
+  <button id="voiceButton">開始說話</button>
 
   <div class="text-box">
     <div><strong>🔄 語音辨識中：</strong></div>
@@ -69,26 +65,29 @@
     recognition.interimResults = true;
 
     let finalText = "", interimText = "";
+    let isRecognizing = false;
 
-    const startRecognition = () => {
-      finalText = ""; interimText = "";
-      document.getElementById("interimText").textContent = "（請開始說話...）";
-      document.getElementById("finalText").textContent = "（尚未辨識）";
-      recognition.start();
+    const voiceButton = document.getElementById("voiceButton");
+
+    const updateButtonUI = () => {
+      voiceButton.textContent = isRecognizing ? "停止說話" : "開始說話";
+      voiceButton.classList.toggle("recording", isRecognizing);
     };
 
-    const stopRecognition = () => recognition.stop();
-
-    function bindRecognitionButton(button) {
-      button.addEventListener("mousedown", startRecognition);
-      button.addEventListener("mouseup", stopRecognition);
-      button.addEventListener("mouseleave", stopRecognition);
-      button.addEventListener("touchstart", e => {
-        e.preventDefault();
-        startRecognition();
-      });
-      button.addEventListener("touchend", stopRecognition);
-    }
+    const toggleRecognition = () => {
+      if (isRecognizing) {
+        recognition.stop();
+        isRecognizing = false;
+        updateButtonUI();
+      } else {
+        finalText = ""; interimText = "";
+        document.getElementById("interimText").textContent = "（請開始說話...）";
+        document.getElementById("finalText").textContent = "（尚未辨識）";
+        recognition.start();
+        isRecognizing = true;
+        updateButtonUI();
+      }
+    };
 
     recognition.onresult = (event) => {
       interimText = "";
@@ -102,12 +101,15 @@
     };
 
     recognition.onend = () => {
+      isRecognizing = false;
+      updateButtonUI();
       const fullText = (finalText + interimText).trim();
       if (!fullText) return;
-      console.log("完整語句：", fullText);
+      console.log("✅ 完整語句：", fullText);
+      // 👉 這裡可以接上 NER / GPT / 圖層控制邏輯
     };
 
-    bindRecognitionButton(document.getElementById("voiceButton"));
+    voiceButton.addEventListener("click", toggleRecognition);
   </script>
 
 </body>
